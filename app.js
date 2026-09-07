@@ -256,14 +256,7 @@ const waLoginForm = document.getElementById('waLoginForm');
 const loginWaInput = document.getElementById('loginWaInput');
 const btnLoginWithWa = document.getElementById('btnLoginWithWa');
 const btnSwitchToLoginWithWa = document.getElementById('btnSwitchToLoginWithWa');
-const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
-
-// Elements: Floating Google One Tap Widget (Top Right Corner)
-const googleOneTapFloatingWidget = document.getElementById('googleOneTapFloatingWidget');
-const btnDismissGoogleOneTap = document.getElementById('btnDismissGoogleOneTap');
-const btnSelectGoogleOneTapAccount = document.getElementById('btnSelectGoogleOneTapAccount');
-const btnContinueWithGoogleOneTap = document.getElementById('btnContinueWithGoogleOneTap');
-const gOneTapDomainName = document.getElementById('gOneTapDomainName');
+const googleSignInBtnContainer = document.getElementById('googleSignInBtnContainer');
 
 const regName = document.getElementById('regName');
 const regWhatsapp = document.getElementById('regWhatsapp');
@@ -632,7 +625,6 @@ if (btnUpgradeFromProfile) {
 // Global Auth Success Callback Handler
 function onAuthSuccess(user, message = '') {
   setCurrentUser(user);
-  hideGoogleOneTapPrompt();
   closeRegisterModal();
   updateSubscriptionUI();
   showToast(message || `Selamat datang, ${user.name}! Akun Anda aktif.`);
@@ -658,7 +650,7 @@ function onAuthSuccess(user, message = '') {
 
 const OFFICIAL_GOOGLE_CLIENT_ID = '525243582803-rqik2o4jgnllhnp35rp9ochu605b2t8n.apps.googleusercontent.com';
 
-// Google Authentication & One-Click API Handlers
+// Google Authentication Handlers (Official Google Identity Services)
 function getGoogleClientId() {
   const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
   if (metaTag && metaTag.getAttribute('content') && !metaTag.getAttribute('content').includes('example')) {
@@ -682,13 +674,16 @@ function decodeJwtResponse(token) {
     );
     return JSON.parse(jsonPayload);
   } catch (e) {
+    console.error('Failed to parse Google JWT:', e);
     return null;
   }
 }
 
 function loginWithGoogleUser(email, name, picture = '') {
-  const cleanEmail = (email || 'ashabilsyauqi@gmail.com').trim().toLowerCase();
-  const cleanName = (name || 'Ashabil Syauqi').trim();
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanName = (name || (cleanEmail ? cleanEmail.split('@')[0] : 'Pengguna Google')).trim();
+
+  if (!cleanEmail) return;
 
   const users = getRegisteredUsers();
   let user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
@@ -696,7 +691,7 @@ function loginWithGoogleUser(email, name, picture = '') {
     user = {
       id: 'usr_g_' + Date.now(),
       name: cleanName,
-      whatsapp: '0812' + Math.floor(10000000 + Math.random() * 90000000),
+      whatsapp: '-',
       rawWhatsapp: '-',
       email: cleanEmail,
       purpose: 'skripsi',
@@ -715,109 +710,88 @@ function loginWithGoogleUser(email, name, picture = '') {
         body: JSON.stringify(user)
       }).catch(() => {});
     } catch (err) {}
+  } else {
+    if (picture) user.picture = picture;
+    saveRegisteredUsers(users);
   }
 
-  closeGoogleOneClickModal();
-  onAuthSuccess(user, `Berhasil masuk sebagai ${user.name}! Akses uji coba 5 menit dimulai.`);
+  onAuthSuccess(user, `Selamat datang, ${user.name}! Akun Google Anda aktif.`);
 }
 
 function handleGoogleSignInResponse(response) {
   if (!response || !response.credential) return;
   const payload = decodeJwtResponse(response.credential);
-  if (!payload) return;
+  if (!payload || !payload.email) {
+    showToast('Gagal memverifikasi akun Google.');
+    return;
+  }
 
-  const googleEmail = payload.email || 'ashabilsyauqi@gmail.com';
-  const googleName = payload.name || 'Ashabil Syauqi';
+  const googleEmail = payload.email;
+  const googleName = payload.name || payload.email.split('@')[0];
   const picture = payload.picture || '';
 
   loginWithGoogleUser(googleEmail, googleName, picture);
 }
 window.handleGoogleSignInResponse = handleGoogleSignInResponse;
 
-function showGoogleOneTapPrompt() {
-  if (getCurrentUser()) return;
-  if (sessionStorage.getItem('onetap_dismissed') === 'true') return;
-  if (!googleOneTapFloatingWidget) return;
+function renderGoogleSignInButton() {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) return;
+  const container = document.getElementById('googleSignInBtnContainer');
+  if (!container) return;
 
-  if (gOneTapDomainName) {
-    const host = window.location.hostname;
-    gOneTapDomainName.textContent = host ? host.replace(/^www\./, '') : 'journalsearch';
+  container.innerHTML = '';
+  try {
+    google.accounts.id.renderButton(container, {
+      theme: 'outline',
+      size: 'large',
+      type: 'standard',
+      shape: 'rectangular',
+      text: 'continue_with',
+      logo_alignment: 'left',
+      width: 300
+    });
+  } catch (e) {
+    console.warn('Google button rendering notice:', e);
   }
-  googleOneTapFloatingWidget.style.display = 'block';
-}
-
-function hideGoogleOneTapPrompt(dismissForSession = false) {
-  if (googleOneTapFloatingWidget) {
-    googleOneTapFloatingWidget.style.display = 'none';
-  }
-  if (dismissForSession) {
-    sessionStorage.setItem('onetap_dismissed', 'true');
-  }
-}
-
-function handleGoogleButtonClick() {
-  const savedGoogleEmail = localStorage.getItem('last_google_email') || 'ashabilsyauqi@gmail.com';
-  const savedGoogleName = localStorage.getItem('last_google_name') || 'Ashabil Syauqi';
-
-  // Instant 1-Click Login
-  loginWithGoogleUser(savedGoogleEmail, savedGoogleName);
 }
 
 function initGoogleAuth() {
   const clientId = getGoogleClientId();
+  if (!clientId) return;
 
-  // Show top-right Google One Tap floating prompt for instant 1-click login
-  if (!getCurrentUser() && sessionStorage.getItem('onetap_dismissed') !== 'true') {
-    setTimeout(() => {
-      showGoogleOneTapPrompt();
-    }, 1200);
-  }
-
-  if (!window.google || !window.google.accounts || !window.google.accounts.id || !clientId) {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    setTimeout(initGoogleAuth, 400);
     return;
   }
 
   try {
-    window.google.accounts.id.initialize({
+    // 1. Initialize Official Google Identity Client
+    google.accounts.id.initialize({
       client_id: clientId,
       callback: handleGoogleSignInResponse,
       auto_select: false,
-      cancel_on_tap_outside: true
+      cancel_on_tap_outside: true,
+      context: 'signin'
     });
 
+    // 2. Render Google Button inside modal container
+    renderGoogleSignInButton();
+
+    // 3. Trigger Official Google One Tap Native Prompt (Top Right)
     if (!getCurrentUser()) {
-      window.google.accounts.id.prompt((notification) => {
+      google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed()) {
-          console.log('Google One Tap notice:', notification.getNotDisplayedReason());
+          console.log('Google One Tap notice (Not Displayed):', notification.getNotDisplayedReason());
+        } else if (notification.isSkippedMoment()) {
+          console.log('Google One Tap notice (Skipped):', notification.getSkippedReason());
+        } else if (notification.isDismissedMoment()) {
+          console.log('Google One Tap notice (Dismissed):', notification.getDismissedReason());
         }
       });
     }
   } catch (err) {
-    console.warn('Google Identity initialization:', err);
+    console.warn('Google Identity initialization error:', err);
   }
-}
-
-if (btnGoogleSignIn) {
-  btnGoogleSignIn.addEventListener('click', handleGoogleButtonClick);
-}
-
-if (btnDismissGoogleOneTap) {
-  btnDismissGoogleOneTap.addEventListener('click', (e) => {
-    e.stopPropagation();
-    hideGoogleOneTapPrompt(true);
-  });
-}
-
-if (btnSelectGoogleOneTapAccount) {
-  btnSelectGoogleOneTapAccount.addEventListener('click', () => {
-    handleGoogleButtonClick();
-  });
-}
-
-if (btnContinueWithGoogleOneTap) {
-  btnContinueWithGoogleOneTap.addEventListener('click', () => {
-    handleGoogleButtonClick();
-  });
 }
 
 // Login via WhatsApp
