@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  journalsearch-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: journalsearch_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MIDTRANS_IS_PRODUCTION=${MIDTRANS_IS_PRODUCTION:-false}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-SB-Mid-client-DaJUK8F_z4TcxoeX}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-SB-Mid-server-MCYu6evcz6fch1r9DhK5xWcN}
+      - MIDTRANS_MERCHANT_ID=${MIDTRANS_MERCHANT_ID:-G740209003}
+    env_file:
+      - .env
