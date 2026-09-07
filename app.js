@@ -1262,66 +1262,47 @@ if (filterOA) filterOA.addEventListener('change', applyFiltersAndSort);
 if (sortBy) sortBy.addEventListener('change', applyFiltersAndSort);
 
 // ====================================================================
-// MINIMALIST & SEAMLESS JOURNAL CARDS RENDERER
+// MINIMALIST & SEAMLESS JOURNAL CARDS RENDERER (WITH TOTAL EXPIRY LOCK)
 // ====================================================================
 function renderJournalsList(papers) {
   journalsList.innerHTML = '';
   const isPaidUser = isSubscriptionActive();
   const trial = getTrialState();
   const hasFullAccess = isPaidUser || trial.isActive;
-  const shouldGate = !hasFullAccess && papers.length > 3;
+
+  // Jika masa aktif habis / belum berlangganan: Tampilkan Banner Notifikasi Kunci Akses
+  if (!hasFullAccess) {
+    const expiredBanner = document.createElement('div');
+    expiredBanner.className = 'locked-expired-overlay-box';
+    expiredBanner.innerHTML = `
+      <div class="locked-expired-banner">
+        <div style="width: 52px; height: 52px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.85rem;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">
+          Masa Akses Lisensi Telah Selesai
+        </h3>
+        <p style="font-size: 0.88rem; color: #475569; max-width: 580px; margin: 0 auto 1.25rem; line-height: 1.55;">
+          Seluruh <strong>${papers.length} artikel jurnal terpublikasi</strong>, pratinjau PDF in-app, tautan jurnal, dan fitur sitasi resmi telah terkunci. Aktifkan paket riset skripsi via <strong>Midtrans Payment Gateway</strong> untuk membuka kembali seluruh akses tanpa batas.
+        </p>
+        <button type="button" class="btn-search btn-unlock-license" style="padding: 0.8rem 1.8rem; font-size: 0.96rem;">
+          Aktifkan Lisensi Riset Skripsi (Mulai Rp 15.000)
+        </button>
+      </div>
+    `;
+    const unlockBtn = expiredBanner.querySelector('.btn-unlock-license');
+    if (unlockBtn) {
+      unlockBtn.addEventListener('click', () => {
+        openPaymentGateway((titleInput && titleInput.value.trim()) || 'Akses Penuh Jurnal Skripsi');
+      });
+    }
+    journalsList.appendChild(expiredBanner);
+  }
 
   for (let idx = 0; idx < papers.length; idx++) {
     const p = papers[idx];
-
-    if (shouldGate && idx >= 3) {
-      if (idx === 3) {
-        // Blur teaser card
-        const blurCard = document.createElement('article');
-        blurCard.className = 'journal-card locked-blur-preview';
-        blurCard.style.borderLeft = '4px solid #2563eb';
-        blurCard.innerHTML = `
-          <div class="journal-card-header">
-            <span class="badge-pill badge-relevance">95% Relevan</span>
-            <span class="badge-pill badge-year">2024</span>
-            <span class="badge-pill badge-origin-id">Nasional (SINTA/Garuda)</span>
-          </div>
-          <h2 class="journal-title"><a href="javascript:void(0)">Jurnal Rujukan Tambahan untuk Penguatan Bab Skripsi</a></h2>
-          <div class="journal-meta">Peneliti Terpublikasi • Jurnal Ilmiah Terakreditasi</div>
-        `;
-        journalsList.appendChild(blurCard);
-
-        // Professional unlock banner
-        const banner = document.createElement('div');
-        banner.className = 'locked-teaser-container';
-        banner.style.margin = '1rem 0';
-        banner.innerHTML = `
-          <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 12px rgba(37,99,235,0.06);">
-            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">
-              Buka Seluruh Akses Minimal 25+ Jurnal & Unduh PDF
-            </h3>
-            <p style="font-size: 0.85rem; color: #64748b; max-width: 580px; margin: 0 auto 1.15rem; line-height: 1.5;">
-              Menampilkan 3 dari total <strong>${papers.length} artikel jurnal terpublikasi</strong> yang ditemukan. Aktifkan paket riset skripsi untuk membuka seluruh acuan, pratinjau PDF in-app, unduh PDF bebas, dan ekspor daftar pustaka resmi via <strong>Midtrans Payment Gateway</strong>.
-            </p>
-            <button type="button" class="btn-search" id="btnUnlockBanner" style="padding: 0.75rem 1.6rem; font-size: 0.92rem;">
-              Buka Akses Penuh Sekarang (Mulai Rp 15.000)
-            </button>
-          </div>
-        `;
-        const unlockBtn = banner.querySelector('#btnUnlockBanner');
-        if (unlockBtn) {
-          unlockBtn.addEventListener('click', () => {
-            const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
-            openPaymentGateway(currentTitle);
-          });
-        }
-        journalsList.appendChild(banner);
-      }
-      break;
-    }
-
     const card = document.createElement('article');
-    card.className = 'journal-card';
+    card.className = 'journal-card' + (!hasFullAccess ? ' card-locked-expired' : '');
 
     let chapterAccent = '#2563eb';
     if (p.recommendedChapter && p.recommendedChapter.includes('Bab 1')) chapterAccent = '#8b5cf6';
@@ -1331,7 +1312,8 @@ function renderJournalsList(papers) {
     card.style.borderLeft = '4px solid ' + chapterAccent;
 
     const isBookmarked = bookmarkedPapers.some(b => b.id === p.id);
-    const linkToOpen = p.doiUrl || p.pdfUrl || (p.doi ? `https://doi.org/${p.doi}` : '#');
+    const linkToOpen = hasFullAccess ? (p.doiUrl || p.pdfUrl || (p.doi ? `https://doi.org/${p.doi}` : '#')) : 'javascript:void(0)';
+    const displayLink = hasFullAccess ? (p.doiUrl || p.pdfUrl || (p.doi ? `https://doi.org/${p.doi}` : '#')) : 'https://doi.org/10.xxxx/terkunci-silakan-aktifkan-lisensi';
     const isIndo = p.origin === 'Dalam Negeri (Indonesia)' || p.language === 'Indonesia';
 
     card.innerHTML = `
@@ -1353,14 +1335,14 @@ function renderJournalsList(papers) {
       </div>
 
       <h2 class="journal-title">
-        <a href="${linkToOpen}" target="_blank" rel="noopener noreferrer">
+        <a href="${linkToOpen}" ${hasFullAccess ? 'target="_blank" rel="noopener noreferrer"' : ''}>
           ${idx + 1}. ${escapeHtml(p.title)}
         </a>
       </h2>
 
       <div class="journal-meta">
         <strong>${escapeHtml(p.authorDisplay)}</strong> • <span>${escapeHtml(p.journal)}</span>
-        ${p.doi ? ` • <span>DOI: ${escapeHtml(p.doi)}</span>` : ''}
+        ${p.doi ? ` • <span>DOI: ${hasFullAccess ? escapeHtml(p.doi) : '10.xxxx/terkunci'}</span>` : ''}
       </div>
 
       <div class="chapter-box">
@@ -1371,12 +1353,12 @@ function renderJournalsList(papers) {
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.5rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
         <div style="display: flex; align-items: center; gap: 0.4rem; max-width: 82%; overflow: hidden; font-size: 0.8rem;">
           <span style="font-weight: 700; color: #475569; flex-shrink: 0;">Link Tautan:</span>
-          <a href="${linkToOpen}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; word-break: break-all;">
-            ${linkToOpen}
+          <a href="${linkToOpen}" ${hasFullAccess ? 'target="_blank" rel="noopener noreferrer"' : ''} style="color: #2563eb; text-decoration: underline; word-break: break-all;">
+            ${displayLink}
           </a>
         </div>
-        <button type="button" class="btn-copy-url btn-export" data-url="${linkToOpen}" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
-          Salin Link
+        <button type="button" class="btn-copy-url btn-export ${!hasFullAccess ? 'locked-feature-btn' : ''}" data-url="${linkToOpen}" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
+          ${hasFullAccess ? 'Salin Link' : 'Terkunci'}
         </button>
       </div>
 
@@ -1390,25 +1372,36 @@ function renderJournalsList(papers) {
       <div class="journal-card-footer">
         <div class="footer-actions">
           ${p.pdfUrl ? `
-            <button type="button" class="link-btn link-pdf btn-preview-pdf" data-pdf="${escapeHtml(p.pdfUrl)}" data-title="${escapeHtml(p.title)}" data-doi="${escapeHtml(p.doiUrl || '')}">
-              Buka PDF (Pratinjau)
+            <button type="button" class="link-btn link-pdf btn-preview-pdf ${!hasFullAccess ? 'locked-feature-btn' : ''}" data-pdf="${escapeHtml(p.pdfUrl)}" data-title="${escapeHtml(p.title)}" data-doi="${escapeHtml(p.doiUrl || '')}">
+              ${hasFullAccess ? 'Buka PDF (Pratinjau)' : 'PDF Terkunci'}
             </button>
-            <a href="${isPaidUser ? p.pdfUrl : 'javascript:void(0)'}" ${isPaidUser ? 'target="_blank" rel="noopener noreferrer" download' : ''} class="link-btn link-doi ${!isPaidUser ? 'btn-locked-pdf-download' : ''}" title="${isPaidUser ? 'Unduh file PDF' : 'Unduh PDF langsung (Berlangganan)'}">
+            <a href="${hasFullAccess && isPaidUser ? p.pdfUrl : 'javascript:void(0)'}" ${hasFullAccess && isPaidUser ? 'target="_blank" rel="noopener noreferrer" download' : ''} class="link-btn link-doi ${!isPaidUser || !hasFullAccess ? 'btn-locked-pdf-download locked-feature-btn' : ''}" title="${hasFullAccess && isPaidUser ? 'Unduh file PDF' : 'Unduh PDF (Khusus Berlangganan)'}">
               Unduh PDF
             </a>
           ` : ''}
           ${p.doiUrl ? `
-            <a href="${p.doiUrl}" target="_blank" rel="noopener noreferrer" class="link-btn link-doi">
+            <a href="${hasFullAccess ? p.doiUrl : 'javascript:void(0)'}" ${hasFullAccess ? 'target="_blank" rel="noopener noreferrer"' : ''} class="link-btn link-doi ${!hasFullAccess ? 'locked-feature-btn' : ''}">
               Halaman Penerbit (DOI)
             </a>
           ` : ''}
         </div>
 
-        <button type="button" class="link-btn btn-cite-action btn-cite" data-id="${p.id}">
-          Format Sitasi
+        <button type="button" class="link-btn btn-cite-action btn-cite ${!hasFullAccess ? 'locked-feature-btn' : ''}" data-id="${p.id}">
+          ${hasFullAccess ? 'Format Sitasi' : 'Sitasi Terkunci'}
         </button>
       </div>
     `;
+
+    // Jika terkunci: Klik kartu langsung memicu modal pembayaran
+    if (!hasFullAccess) {
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        showToast('Akses terkunci: Masa lisensi telah berakhir. Silakan pilih paket riset untuk membuka seluruh jurnal.');
+        openPaymentGateway((titleInput && titleInput.value.trim()) || p.title);
+      });
+      journalsList.appendChild(card);
+      continue;
+    }
 
     const previewPdfBtn = card.querySelector('.btn-preview-pdf');
     if (previewPdfBtn) {
@@ -1527,9 +1520,19 @@ function closePdfPreview() {
 if (btnPdfModalClose) btnPdfModalClose.addEventListener('click', closePdfPreview);
 
 // ====================================================================
-// CITATION MODAL
+// CITATION MODAL (PROTECTED BY LICENSE)
 // ====================================================================
 function openCiteModal(paper) {
+  const isPaidUser = isSubscriptionActive();
+  const trial = getTrialState();
+  const hasFullAccess = isPaidUser || trial.isActive;
+
+  if (!hasFullAccess) {
+    showToast('Akses Sitasi Terkunci: Masa aktif lisensi Anda telah berakhir. Silakan pilih paket riset untuk menyalin format sitasi.');
+    openPaymentGateway((titleInput && titleInput.value.trim()) || (paper && paper.title) || 'Format Sitasi Jurnal');
+    return;
+  }
+
   currentCitePaper = paper;
   citeModal.style.display = 'flex';
   updateCitePreview();
@@ -1559,16 +1562,36 @@ function updateCitePreview() {
 
 if (btnCopySingleCite) {
   btnCopySingleCite.addEventListener('click', () => {
+    const isPaidUser = isSubscriptionActive();
+    const trial = getTrialState();
+    const hasFullAccess = isPaidUser || trial.isActive;
+
+    if (!hasFullAccess) {
+      showToast('Akses Sitasi Terkunci: Silakan aktifkan lisensi riset Anda.');
+      openPaymentGateway((titleInput && titleInput.value.trim()) || 'Format Sitasi Jurnal');
+      return;
+    }
+
     if (!citePreview.textContent) return;
     copyToClipboard(citePreview.textContent, 'Format sitasi berhasil disalin ke clipboard!');
   });
 }
 
 // ====================================================================
-// EXPORT ACTIONS (TOOLBAR)
+// EXPORT ACTIONS (TOOLBAR - PROTECTED BY LICENSE)
 // ====================================================================
 if (btnCopyAllLinks) {
   btnCopyAllLinks.addEventListener('click', () => {
+    const isPaidUser = isSubscriptionActive();
+    const trial = getTrialState();
+    const hasFullAccess = isPaidUser || trial.isActive;
+
+    if (!hasFullAccess) {
+      showToast('Akses Terkunci: Silakan aktifkan paket riset skripsi untuk menyalin semua tautan jurnal.');
+      openPaymentGateway((titleInput && titleInput.value.trim()) || 'Salin Semua Tautan Jurnal');
+      return;
+    }
+
     if (currentFiltered.length === 0) {
       showToast('Tidak ada jurnal yang ditampilkan!');
       return;
@@ -1583,6 +1606,16 @@ if (btnCopyAllLinks) {
 
 if (btnCopyAllApa) {
   btnCopyAllApa.addEventListener('click', () => {
+    const isPaidUser = isSubscriptionActive();
+    const trial = getTrialState();
+    const hasFullAccess = isPaidUser || trial.isActive;
+
+    if (!hasFullAccess) {
+      showToast('Akses Terkunci: Silakan aktifkan paket riset skripsi untuk menyalin daftar pustaka format APA 7.');
+      openPaymentGateway((titleInput && titleInput.value.trim()) || 'Salin Daftar Pustaka APA 7');
+      return;
+    }
+
     if (currentFiltered.length === 0) {
       showToast('Tidak ada jurnal yang ditampilkan!');
       return;
@@ -1594,6 +1627,16 @@ if (btnCopyAllApa) {
 
 if (btnExportTxt) {
   btnExportTxt.addEventListener('click', () => {
+    const isPaidUser = isSubscriptionActive();
+    const trial = getTrialState();
+    const hasFullAccess = isPaidUser || trial.isActive;
+
+    if (!hasFullAccess) {
+      showToast('Akses Terkunci: Silakan aktifkan paket riset skripsi untuk mengunduh dokumen referensi.');
+      openPaymentGateway((titleInput && titleInput.value.trim()) || 'Unduh Dokumen TXT/Word');
+      return;
+    }
+
     if (currentFiltered.length === 0) {
       showToast('Tidak ada jurnal yang ditampilkan!');
       return;
@@ -1620,6 +1663,16 @@ if (btnExportTxt) {
 
 if (btnExportBibtex) {
   btnExportBibtex.addEventListener('click', () => {
+    const isPaidUser = isSubscriptionActive();
+    const trial = getTrialState();
+    const hasFullAccess = isPaidUser || trial.isActive;
+
+    if (!hasFullAccess) {
+      showToast('Akses Terkunci: Silakan aktifkan paket riset skripsi untuk mengekspor BibTeX ke Mendeley/Zotero.');
+      openPaymentGateway((titleInput && titleInput.value.trim()) || 'Ekspor BibTeX');
+      return;
+    }
+
     if (currentFiltered.length === 0) {
       showToast('Tidak ada jurnal yang ditampilkan!');
       return;

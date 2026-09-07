@@ -899,6 +899,59 @@ body {
   background: #dbeafe;
 }
 
+/* LOCKED / EXPIRED CARDS & FULL BLUR OVERLAY */
+.journal-card.card-locked-expired {
+  filter: blur(5px) grayscale(40%);
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.journal-card.card-locked-expired a,
+.journal-card.card-locked-expired button {
+  pointer-events: none;
+}
+
+.locked-expired-overlay-box {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.locked-expired-banner {
+  background: #ffffff;
+  border: 2px solid #3b82f6;
+  border-radius: var(--radius-xl);
+  padding: 1.85rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 16px 36px -6px rgba(37, 99, 235, 0.22);
+}
+
+.locked-expired-banner h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.4rem;
+}
+
+.locked-expired-banner p {
+  font-size: 0.88rem;
+  color: #475569;
+  max-width: 580px;
+  margin: 0 auto 1.25rem;
+  line-height: 1.55;
+}
+
+.locked-feature-btn {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #cbd5e1 !important;
+}
+
 /* MODALS */
 .modal-overlay {
   display: none;
