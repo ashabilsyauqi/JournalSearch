@@ -1491,13 +1491,13 @@ function renderJournalsList(papers) {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; line-height: 1.3;">
-          Jangan Biarkan Progres Skripsimu Terhenti di Sini
+          Akses Riset Lengkap Seharga Secangkir Es Kopi
         </h3>
         <p style="font-size: 0.9rem; color: #475569; max-width: 620px; margin: 0 auto 1.35rem; line-height: 1.6;">
           Sayang sekali kalau harus cari dan sortir ulang bahan dari awal. Simpan progresmu dan buka kembali akses ke 40 jurnal pilihan, sitasi otomatis, serta bacaan lengkap PDF hanya dengan sekali klik.
         </p>
         <button type="button" class="btn-search btn-unlock-license" style="padding: 0.85rem 2rem; font-size: 0.98rem; font-weight: 700; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
-          Selamatkan Progres Riset (Mulai Rp15.000)
+          Lanjut Riset Sekarang Cuma Rp15.000
         </button>
       </div>
     `;
