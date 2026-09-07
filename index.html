@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JournalSearch — Sistem Rekomendasi Jurnal Ilmiah Berdasarkan Judul Skripsi</title>
+  
+  <script>
+    (function() {
+      var cssPaths = ['style.css', './style.css', 'public/style.css', './public/style.css', '../style.css'];
+      var favPaths = ['favicon.svg', './favicon.svg', 'public/favicon.svg', './public/favicon.svg'];
+      var jsPaths = ['app.js', './app.js', 'public/app.js', './public/app.js'];
+
+      window.__dynamicAssetResolver = {
+        cssIndex: 0,
+        favIndex: 0,
+        jsIndex: 0,
+        cssPaths: cssPaths,
+        favPaths: favPaths,
+        jsPaths: jsPaths
+      };
+
+      window.__handleCssFallback = function(linkElem) {
+        var resolver = window.__dynamicAssetResolver;
+        resolver.cssIndex++;
+        if (resolver.cssIndex < resolver.cssPaths.length) {
+          linkElem.href = resolver.cssPaths[resolver.cssIndex];
+        }
+      };
+
+      window.__handleFavFallback = function(linkElem) {
+        var resolver = window.__dynamicAssetResolver;
+        resolver.favIndex++;
+        if (resolver.favIndex < resolver.favPaths.length) {
+          linkElem.href = resolver.favPaths[resolver.favIndex];
+        }
+      };
+
+      window.__handleScriptFallback = function(oldScript) {
+        var resolver = window.__dynamicAssetResolver;
+        resolver.jsIndex++;
+        if (resolver.jsIndex < resolver.jsPaths.length) {
+          var nextSrc = resolver.jsPaths[resolver.jsIndex];
+          var newScript = document.createElement('script');
+          newScript.id = 'mainScript';
+          newScript.src = nextSrc;
+          newScript.onerror = function() { window.__handleScriptFallback(newScript); };
+          if (oldScript && oldScript.parentNode) {
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+          } else {
+            document.body.appendChild(newScript);
+          }
+        }
+      };
+
+      window.__handleCssLoaded = function(linkElem) {
+        try {
+          if (linkElem && linkElem.getAttribute('href')) {
+            sessionStorage.setItem('__valid_dynamic_css_href', linkElem.getAttribute('href'));
+          }
+        } catch (e) {}
+      };
+
+      try {
+        var cachedCss = sessionStorage.getItem('__valid_dynamic_css_href');
+        if (cachedCss) {
+          var idx = cssPaths.indexOf(cachedCss);
+          if (idx > -1) cssPaths.splice(idx, 1);
+          cssPaths.unshift(cachedCss);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <link id="mainFavicon" rel="icon" type="image/svg+xml" href="favicon.svg" onerror="window.__handleFavFallback && window.__handleFavFallback(this)">
+  <link id="mainStylesheet" rel="stylesheet" href="style.css" onload="window.__handleCssLoaded && window.__handleCssLoaded(this)" onerror="window.__handleCssFallback && window.__handleCssFallback(this)">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="javascript:void(0)" onclick="window.scrollTo({top:0, behavior:'smooth'})" class="brand" title="Sistem Rekomendasi Jurnal Ilmiah">
+        <svg class="brand-icon" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#2563eb" />
+              <stop offset="100%" stop-color="#4f46e5" />
+            </linearGradient>
+          </defs>
+          <rect width="100" height="100" rx="20" fill="url(#navGrad)" />
+          <path d="M22 28 C30 24, 45 25, 50 30 C55 25, 70 24, 78 28 L78 72 C70 68, 55 69, 50 74 C45 69, 30 68, 22 72 Z" fill="#ffffff" opacity="0.95" />
+          <path d="M50 30 L50 74" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+          <circle cx="72" cy="30" r="8" fill="#38bdf8" />
+        </svg>
+        <span class="brand-name">JournalSearch</span>
+        <span class="brand-tag">Academic Engine</span>
+      </a>
+
+      <div class="nav-actions">
+        <!-- License Status Pill -->
+        <div id="subStatusBadge" class="sub-status-pill trial" title="Status Akses Lisensi">
+          <svg class="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="subStatusText">Uji Coba: 05:00</span>
+          <button type="button" id="btnUpgradeNav" class="btn-upgrade-nav">Beli Akses</button>
+        </div>
+
+        <!-- Saved Journals / Collection -->
+        <button type="button" id="btnOpenBookmarks" class="btn-nav-action" title="Koleksi Jurnal Tersimpan">
+          <svg class="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span>Koleksi</span>
+          <span id="bookmarkCount" class="badge-count">0</span>
+        </button>
+
+        <!-- User Profile / Dashboard Button -->
+        <button type="button" id="btnNavUser" class="nav-user-badge" title="Dashboard Pengguna">
+          <svg class="nav-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="navUserLabel">Masuk / Daftar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-wrapper">
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-badge">
+        <span>Sistem Rekomendasi Jurnal Ilmiah Terakreditasi</span>
+      </div>
+      <h1 class="hero-title">
+        Temukan Jurnal Acuan Ilmiah <span>Hanya Dari Judul Skripsi</span>
+      </h1>
+      <p class="hero-subtitle">
+        Masukkan rencana judul skripsi atau tesis Anda. Sistem secara otomatis membedah variabel penelitian, mencari ke pangkalan data OpenAlex & Crossref, dan menyajikan minimal 25 artikel jurnal terbitan valid lengkap dengan pratinjau PDF serta format sitasi resmi.
+      </p>
+      <div class="hero-features-bar">
+        <div class="hero-feat-item">
+          <span class="feat-bullet"></span>
+          <span>75% Nasional : 25% Internasional</span>
+        </div>
+        <div class="hero-feat-item">
+          <span class="feat-bullet"></span>
+          <span>Terbitan 2021–2026 (5 Tahun Terakhir)</span>
+        </div>
+        <div class="hero-feat-item">
+          <span class="feat-bullet"></span>
+          <span>Minimal 25 Jurnal Terpublikasi</span>
+        </div>
+        <div class="hero-feat-item">
+          <span class="feat-bullet"></span>
+          <span>Pratinjau & Unduh PDF Langsung</span>
+        </div>
+        <div class="hero-feat-item">
+          <span class="feat-bullet"></span>
+          <span>Ekspor Sitasi Standar APA 7 & BibTeX</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search Form Card -->
+    <section class="search-card">
+      <form id="searchForm" class="search-form">
+        <div class="input-label">
+          <span>Rencana Judul Skripsi / Tesis / Penelitian:</span>
+          <span class="input-hint">Mendukung semua rumpun ilmu & bahasa</span>
+        </div>
+
+        <div class="search-input-wrapper">
+          <textarea 
+            id="titleInput" 
+            class="search-textarea" 
+            placeholder="Contoh: Pengaruh Kepemimpinan Transformasional dan Motivasi Kerja terhadap Kinerja Karyawan pada PT..."
+            rows="2" 
+            required></textarea>
+        </div>
+
+        <div class="search-actions">
+          <div class="sample-chips">
+            <span class="sample-label">Contoh Topik:</span>
+            <button type="button" class="chip-btn" data-sample="Pengaruh Kepemimpinan Transformasional dan Motivasi Kerja terhadap Kinerja Karyawan">Manajemen / SDM</button>
+            <button type="button" class="chip-btn" data-sample="Penerapan Algoritma Convolutional Neural Network untuk Klasifikasi Penyakit Daun Padi">Informatika / AI</button>
+            <button type="button" class="chip-btn" data-sample="Analisis Efektivitas Pembelajaran Berbasis Proyek terhadap Keterampilan Berpikir Kritis Siswa">Pendidikan</button>
+            <button type="button" class="chip-btn" data-sample="Pengaruh Profitabilitas, Likuiditas, dan Ukuran Perusahaan terhadap Nilai Perusahaan">Akuntansi / Keuangan</button>
+          </div>
+
+          <button type="submit" id="searchSubmitBtn" class="btn-search" title="Mulai pencarian jurnal acuan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span id="searchBtnText">Cari Jurnal Acuan</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Loading Animation -->
+    <div id="loadingBox" class="loading-box">
+      <div class="spinner"></div>
+      <h3 class="loading-title">Sedang Menganalisis Judul & Mengambil Jurnal Terpublikasi...</h3>
+      <p id="loadingDesc" class="loading-desc">Mengkoneksikan ke basis data OpenAlex & Crossref index...</p>
+    </div>
+
+    <!-- Title Semantic Analysis Card -->
+    <div id="analysisCard" class="analysis-card">
+      <div class="analysis-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <strong>Hasil Analisis Semantik Judul Skripsi:</strong>
+        </div>
+        <span id="analysisTypeBadge" class="analysis-badge">Kuantitatif Korelasional</span>
+      </div>
+      <div class="analysis-items">
+        <div class="analysis-item">
+          <strong>Variabel & Konsep Utama:</strong>
+          <div id="analysisKeywords" class="keywords-tags"></div>
+        </div>
+        <div class="analysis-item">
+          <strong>Padanan Akademik Internasional:</strong>
+          <div id="analysisEnglishTerms" class="keywords-tags"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Control Toolbar -->
+    <div id="toolbarCard" class="toolbar-card">
+      <div class="toolbar-top">
+        <div class="results-summary">
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <span id="resultsCountText">Menampilkan 0 Jurnal Terpublikasi</span>
+            <span class="badge-verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              Minimal 25 Terpenuhi
+            </span>
+          </div>
+          <div id="ratioPill" class="ratio-indicator">
+            Komposisi: 75% Jurnal Nasional (SINTA/Garuda) • 25% Jurnal Internasional (Scopus/WoS)
+          </div>
+        </div>
+
+        <div class="toolbar-exports">
+          <button id="btnCopyAllLinks" class="btn-export" title="Salin semua URL/tautan jurnal yang tampil">
+            Salin Semua Tautan
+          </button>
+          <button id="btnCopyAllApa" class="btn-export" title="Salin semua daftar pustaka format APA 7">
+            Salin APA 7
+          </button>
+          <button id="btnExportTxt" class="btn-export" title="Unduh format teks / Word">
+            Unduh TXT / Word
+          </button>
+          <button id="btnExportBibtex" class="btn-export" title="Unduh BibTeX untuk Mendeley/Zotero">
+            Ekspor BibTeX
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="filterYear">Rentang Terbit:</label>
+          <select id="filterYear" class="filter-select">
+            <option value="2021" selected>5 Tahun Terakhir (2021–2026, Standar Skripsi)</option>
+            <option value="2018">8 Tahun Terakhir (2018–2026)</option>
+            <option value="all">Semua Tahun Terbitan</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filterLang">Asal Terbitan:</label>
+          <select id="filterLang" class="filter-select">
+            <option value="all" selected>Komposisi 75% Nasional : 25% Luar Negeri</option>
+            <option value="id">Jurnal Nasional (Indonesia)</option>
+            <option value="en">Jurnal Internasional (Luar Negeri)</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filterOA">Akses Jurnal:</label>
+          <select id="filterOA" class="filter-select">
+            <option value="all" selected>Semua (Open Access & Berlangganan)</option>
+            <option value="oa">Hanya Open Access (PDF Gratis)</option>
+          </select>
+        </div>
+
+        <div class="filter-group sort-group">
+          <label for="sortBy">Urutkan:</label>
+          <select id="sortBy" class="filter-select">
+            <option value="relevance" selected>Relevansi Tertinggi</option>
+            <option value="year">Tahun Terbaru</option>
+            <option value="citations">Sitasi Terbanyak</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journal Cards Container -->
+    <div id="journalsList" class="journals-list"></div>
+
+  </main>
+
+  <!-- Modal Penampil PDF Interaktif Langsung (In-App PDF Viewer) -->
+  <div id="pdfPreviewModal" class="modal-overlay">
+    <div class="modal-content pdf-modal-content">
+      <div class="modal-header pdf-header">
+        <div class="pdf-header-info">
+          <div class="pdf-icon-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div>
+            <h3 id="pdfModalTitle" class="pdf-title">Pratinjau Jurnal Ilmiah (PDF)</h3>
+            <div id="pdfModalSubtitle" class="pdf-subtitle">Memuat dokumen resmi dari server penerbit...</div>
+          </div>
+        </div>
+        <div class="pdf-header-actions">
+          <a id="btnPdfOpenNewTab" href="javascript:void(0)" target="_blank" rel="noopener noreferrer" class="btn-export" title="Buka PDF di tab baru">
+            Tab Baru ↗
+          </a>
+          <a id="btnPdfDirectDownload" href="javascript:void(0)" download class="btn-search btn-download-pdf" title="Unduh file PDF">
+            Unduh PDF
+          </a>
+          <button id="btnPdfModalClose" class="modal-close">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body pdf-body">
+        <div id="pdfLoadingIndicator" class="pdf-loading">
+          <div class="spinner" style="border-top-color: #38bdf8;"></div>
+          <p style="margin-top: 0.8rem; font-weight: 600;">Mengambil Stream PDF dari Repositori Jurnal...</p>
+          <span style="font-size: 0.78rem; opacity: 0.8;">Menggunakan bypass streaming proxy untuk tampilan in-app.</span>
+        </div>
+        <iframe id="pdfViewerIframe" src="" class="pdf-iframe" title="PDF Preview Frame"></iframe>
+        <div id="pdfFallbackNotice" class="pdf-fallback">
+          <p style="font-size: 0.88rem; color: #475569; margin-bottom: 0.6rem;">
+            Repositori jurnal ini mungkin membatasi penayangan bingkai iframe langsung.
+          </p>
+          <a id="btnPdfFallbackLink" href="javascript:void(0)" target="_blank" rel="noopener noreferrer" class="btn-search">
+            Buka Dokumen PDF di Tab Baru
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Citation Modal Dialog -->
+  <div id="citeModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Format Sitasi Jurnal</h3>
+        <button id="btnCiteClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="cite-tabs">
+          <button class="cite-tab active" data-style="apa">APA 7th Edition</button>
+          <button class="cite-tab" data-style="ieee">IEEE</button>
+          <button class="cite-tab" data-style="harvard">Harvard</button>
+          <button class="cite-tab" data-style="bibtex">BibTeX</button>
+        </div>
+        <div class="cite-box">
+          <pre id="citePreview" class="cite-text"></pre>
+        </div>
+        <div class="cite-actions">
+          <button id="btnCopySingleCite" class="btn-search" style="padding: 0.55rem 1.25rem;">
+            Salin Sitasi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Koleksi / Bookmark Jurnal -->
+  <div id="bookmarkModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 780px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Koleksi Jurnal Acuan Tersimpan</h3>
+        <button id="btnBookmarkClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="bookmarkListContainer" class="bookmark-list"></div>
+        <div class="bookmark-actions">
+          <button id="btnClearBookmarks" class="btn-export" style="color: #ef4444; border-color: #fecaca;">
+            Hapus Semua
+          </button>
+          <button id="btnCopyBookmarksDapus" class="btn-search">
+            Salin Semua Daftar Pustaka (APA 7)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Pembayaran Resmi Midtrans Payment Gateway -->
+  <div id="paymentGatewayModal" class="modal-overlay">
+    <div class="modal-content checkout-modal-content">
+      
+      <div class="modal-header checkout-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div class="checkout-icon-badge">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Pilih Paket Riset Skripsi & Tesis</h3>
+            <div style="font-size: 0.76rem; color: #166534; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; margin-top: 0.15rem;">
+              <span>Terkoneksi Pembayaran Resmi Midtrans (QRIS, VA Bank, E-Wallet)</span>
+            </div>
+          </div>
+        </div>
+        <button id="btnPaymentClose" class="modal-close">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem 1.5rem 1.5rem;">
+        
+        <!-- Pricing Cards Section -->
+        <div class="plans-grid">
+          <!-- Card 1: Single -->
+          <div class="plan-card plan-card-item" data-plan="single">
+            <div class="plan-card-header">
+              <div class="plan-name">1x Riset Judul</div>
+              <div class="plan-desc">Validasi 1 judul skripsi awal (24 jam)</div>
+              <div class="plan-price-box">
+                <span class="plan-currency">Rp</span>
+                <span class="plan-amount">15.000</span>
+                <span class="plan-period">/judul</span>
+              </div>
+            </div>
+            <button type="button" class="btn-plan-select" data-plan="single">Pilih Paket</button>
+            <ul class="plan-features">
+              <li><span>Minimal 25 Jurnal Terpublikasi</span></li>
+              <li><span>75% Nasional : 25% Internasional</span></li>
+              <li><span>Pratinjau & Unduh PDF Asli</span></li>
+              <li><span>Ekspor Sitasi APA 7 & BibTeX</span></li>
+            </ul>
+          </div>
+
+          <!-- Card 2: Monthly (Popular) -->
+          <div class="plan-card popular active plan-card-item" data-plan="monthly">
+            <div class="plan-badge-highlight">Paling Populer & Direkomendasikan</div>
+            <div class="plan-card-header">
+              <div class="plan-name">1 Bulan Unlimited</div>
+              <div class="plan-desc">Pengerjaan Bab 1 hingga Bab 4 skripsi</div>
+              <div class="plan-price-box">
+                <span class="plan-currency">Rp</span>
+                <span class="plan-amount">49.000</span>
+                <span class="plan-period">/bulan</span>
+              </div>
+            </div>
+            <button type="button" class="btn-plan-select primary" data-plan="monthly">Paket Terpilih</button>
+            <ul class="plan-features">
+              <li><span><strong>Unlimited Pencarian Judul</strong> (30 Hari)</span></li>
+              <li><span><strong>25–50+ Jurnal</strong> per setiap judul</span></li>
+              <li><span>Pratinjau & Unduh Semua PDF</span></li>
+              <li><span>Analisis Kecocokan Bab 1, 2, 3, 4</span></li>
+              <li><span>Ekspor Massal Word, Mendeley, Zotero</span></li>
+            </ul>
+          </div>
+
+          <!-- Card 3: Pro 6 Bulan -->
+          <div class="plan-card plan-card-item" data-plan="pro">
+            <div class="plan-card-header">
+              <div class="plan-name">Pro VIP (6 Bulan)</div>
+              <div class="plan-desc">Akses 1 semester untuk S1, S2, & S3</div>
+              <div class="plan-price-box">
+                <span class="plan-currency">Rp</span>
+                <span class="plan-amount">99.000</span>
+                <span class="plan-period">/6 bulan</span>
+              </div>
+            </div>
+            <button type="button" class="btn-plan-select" data-plan="pro">Pilih Paket</button>
+            <ul class="plan-features">
+              <li><span><strong>Akses Penuh 180 Hari</strong></span></li>
+              <li><span>Prioritas Jurnal Scopus & SINTA</span></li>
+              <li><span>Download Massal & Export Sitasi</span></li>
+              <li><span>Dukungan Teknis Prioritas</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Order Summary Box -->
+        <div class="order-summary-box">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #2563eb; letter-spacing: 0.04em;">
+                Ringkasan Tagihan
+              </div>
+              <div id="paymentPlanNameDisplay" style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin-top: 0.1rem;">
+                Paket Mahasiswa 1 Bulan (Unlimited)
+              </div>
+              <div id="paymentTitlePreview" style="font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; max-height: 2.8em; overflow: hidden; text-overflow: ellipsis;">
+                Judul: -
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.74rem; color: #64748b;">Total Pembayaran</div>
+              <div id="paymentAmountDisplay" style="font-size: 1.35rem; font-weight: 800; color: #059669; font-family: monospace;">
+                Rp 49.000
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Action Button: Midtrans Snap Pop-up -->
+        <div style="margin-top: 1.1rem; display: flex; flex-direction: column; gap: 0.65rem;">
+          <button id="btnPayMidtransSnap" type="button" class="btn-pay-snap">
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <div style="text-align: left;">
+                <div style="font-size: 0.96rem; font-weight: 800; line-height: 1.2;">Lanjutkan Pembayaran (Midtrans Snap)</div>
+                <div style="font-size: 0.74rem; font-weight: 500; opacity: 0.9;">QRIS Instan, GoPay, ShopeePay, Virtual Account BCA / Mandiri / BRI / BNI</div>
+              </div>
+            </div>
+            <span style="font-size: 1.2rem; font-weight: 800;">➔</span>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 0.45rem; font-size: 0.74rem; color: #64748b; margin-top: 0.4rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Pembayaran Resmi & Terenkripsi 256-bit oleh Midtrans Payment Gateway</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Sukses Aktivasi Lisensi & Pembayaran -->
+  <div id="licenseSuccessModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px; border-radius: 16px; border-top: 6px solid #10b981; text-align: center; padding: 2rem 1.8rem;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem;">
+        Pembayaran Berhasil!
+      </h3>
+      <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 1.25rem;">
+        Lisensi riset skripsi Anda telah resmi aktif dan siap digunakan seketika.
+      </p>
+
+      <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 1rem 1.2rem; text-align: left; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <span style="font-size: 0.76rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Paket Aktif</span>
+          <span id="licenseSuccessPlanBadge" style="font-size: 0.74rem; font-weight: 700; background: #166534; color: #ffffff; padding: 0.2rem 0.65rem; border-radius: 20px;">
+            1 Bulan Unlimited
+          </span>
+        </div>
+        <div id="licenseSuccessPlanName" style="font-size: 1.05rem; font-weight: 800; color: #14532d; margin-bottom: 0.35rem;">
+          Paket Mahasiswa 1 Bulan (Unlimited)
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #166534; border-top: 1px dashed #86efac; padding-top: 0.45rem; margin-top: 0.4rem;">
+          <span>Masa Berlaku Lisensi:</span>
+          <strong id="licenseSuccessDuration">30 Hari Penuh</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #166534; margin-top: 0.25rem;">
+          <span>Aktif Sampai:</span>
+          <strong id="licenseSuccessExpires">7 Oktober 2026</strong>
+        </div>
+      </div>
+
+      <div style="text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; font-size: 0.82rem; color: #334155;">
+        <div style="font-weight: 700; margin-bottom: 0.35rem; color: #0f172a;">Fitur Yang Terbuka:</div>
+        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+          <div>• Minimal 25+ Jurnal Acuan valid per pencarian</div>
+          <div>• Pratinjau PDF & Unduh Bebas Tanpa Batas</div>
+          <div>• Ekspor Sitasi Standar (APA 7, Word, BibTeX)</div>
+          <div>• Analisis Relevansi & Rekomendasi Bab Skripsi</div>
+        </div>
+      </div>
+
+      <button id="btnStartExploringAfterPaid" type="button" class="btn-search" style="width: 100%; padding: 0.85rem 1.25rem; font-size: 0.95rem; font-weight: 800; border-radius: 10px;">
+        Mulai Riset & Lihat Seluruh Jurnal
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal User Dashboard & Profile (Tabs: Profile/License, Saved Journals, Search History) -->
+  <div id="userProfileModal" class="modal-overlay">
+    <div class="modal-content user-dashboard-modal">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <div class="user-avatar-circle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Dashboard Pengguna</h3>
+            <div id="dashUserSubhead" style="font-size: 0.76rem; color: #64748b;">Kelola akun, status lisensi, dan koleksi riset skripsi</div>
+          </div>
+        </div>
+        <button id="btnProfileClose" class="modal-close">&times;</button>
+      </div>
+
+      <!-- Dashboard Tab Navigation -->
+      <div class="dash-tabs-bar">
+        <button type="button" class="dash-tab-btn active" data-tab="tabProfileOverview">
+          Status & Lisensi
+        </button>
+        <button type="button" class="dash-tab-btn" data-tab="tabSavedJournals">
+          Jurnal Tersimpan (<span id="dashSavedCount">0</span>)
+        </button>
+        <button type="button" class="dash-tab-btn" data-tab="tabSearchHistory">
+          Riwayat Pencarian (<span id="dashHistoryCount">0</span>)
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem 1.5rem 1.5rem; max-height: 75vh; overflow-y: auto;">
+        
+        <!-- Tab 1: Profile & License Overview -->
+        <div id="tabProfileOverview" class="dash-tab-pane active">
+          
+          <!-- License Status Banner -->
+          <div class="dash-license-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.76rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase;">Status Lisensi</span>
+              <span id="profStatusDisplay" class="status-chip-active">Aktif</span>
+            </div>
+            <div id="profPlanNameDisplay" style="font-size: 1.1rem; font-weight: 800; color: #1e3a8a; margin-bottom: 0.25rem;">
+              Paket Mahasiswa 1 Bulan (Unlimited)
+            </div>
+            <div id="profRemainingDisplay" style="font-size: 0.88rem; font-weight: 700; color: #2563eb; margin-bottom: 0.6rem;">
+              Sisa Waktu: Menghitung...
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; font-size: 0.8rem; background: rgba(255,255,255,0.75); padding: 0.75rem; border-radius: 8px; border: 1px solid #bfdbfe;">
+              <div>
+                <div style="color: #64748b; font-size: 0.72rem;">Tanggal Aktivasi:</div>
+                <div id="profActivatedAtDisplay" style="font-weight: 700; color: #0f172a;">-</div>
+              </div>
+              <div>
+                <div style="color: #64748b; font-size: 0.72rem;">Berlaku Hingga:</div>
+                <div id="profExpiresAtDisplay" style="font-weight: 700; color: #0f172a;">-</div>
+              </div>
+            </div>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.6rem;">
+              <button type="button" id="btnUpgradeFromProfile" class="btn-search" style="flex: 1; padding: 0.55rem 1rem; font-size: 0.84rem;">
+                Beli / Perpanjang Paket
+              </button>
+            </div>
+          </div>
+
+          <!-- User Information Card -->
+          <div class="dash-user-info-box">
+            <div style="font-size: 0.84rem; font-weight: 700; color: #0f172a; margin-bottom: 0.6rem;">
+              Informasi Akun
+            </div>
+            <div class="info-row">
+              <span class="info-label">Nama Lengkap:</span>
+              <span id="profNameDisplay" class="info-val">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">WhatsApp:</span>
+              <span id="profWhatsappDisplay" class="info-val" style="font-family: monospace;">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Email:</span>
+              <span id="profEmailDisplay" class="info-val">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Tujuan Riset:</span>
+              <span id="profPurposeDisplay" class="info-val">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Institusi / Kampus:</span>
+              <span id="profInstitutionDisplay" class="info-val">-</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+            <button id="btnLogoutUser" type="button" class="btn-export" style="color: #ef4444; border-color: #fecaca; font-size: 0.82rem;">
+              Keluar dari Akun
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Saved / Bookmarked Journals -->
+        <div id="tabSavedJournals" class="dash-tab-pane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-size: 0.86rem; font-weight: 700; color: #0f172a;">
+              Daftar Jurnal Referensi Anda
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="btnDashCopyAllApa" class="btn-export" style="padding: 0.35rem 0.7rem; font-size: 0.78rem;">
+                Salin Semua (APA 7)
+              </button>
+              <button id="btnDashExportBib" class="btn-export" style="padding: 0.35rem 0.7rem; font-size: 0.78rem;">
+                Ekspor BibTeX
+              </button>
+            </div>
+          </div>
+          <div id="dashSavedListContainer" class="bookmark-list"></div>
+        </div>
+
+        <!-- Tab 3: Search History -->
+        <div id="tabSearchHistory" class="dash-tab-pane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="font-size: 0.86rem; font-weight: 700; color: #0f172a;">
+              Riwayat Pencarian Skripsi
+            </div>
+            <button id="btnClearSearchHistory" class="btn-export" style="color: #ef4444; border-color: #fecaca; font-size: 0.76rem; padding: 0.3rem 0.6rem;">
+              Bersihkan Riwayat
+            </button>
+          </div>
+          <div id="dashHistoryListContainer" class="history-list"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Auth (Login & Registrasi Panel) -->
+  <div id="registerModal" class="modal-overlay">
+    <div class="modal-content auth-modal-content">
+      <div class="modal-header auth-modal-header">
+        <div>
+          <h3 id="registerModalTitle" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">
+            Akun Riset Akademik
+          </h3>
+          <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.2rem;">
+            Akses penuh pencarian jurnal acuan skripsi & tesis
+          </div>
+        </div>
+        <button id="btnRegisterClose" class="modal-close">&times;</button>
+      </div>
+
+      <!-- Auth Tabs: Masuk vs Daftar -->
+      <div class="auth-tabs">
+        <button type="button" id="tabLoginSwitch" class="auth-tab-btn" data-auth="login">
+          Masuk Akun
+        </button>
+        <button type="button" id="tabRegisterSwitch" class="auth-tab-btn active" data-auth="register">
+          Daftar Baru
+        </button>
+      </div>
+
+      <div class="modal-body auth-modal-body">
+        
+        <div id="regErrorAlert" style="display: none;" class="auth-alert">
+          <strong id="regErrorTitle" style="display: block; font-size: 0.82rem; margin-bottom: 0.2rem;">Perhatian</strong>
+          <div id="regErrorMessage" style="font-size: 0.78rem; line-height: 1.45;"></div>
+          <button type="button" id="btnSwitchToLoginWithWa" class="btn-search" style="display: none; margin-top: 0.6rem; padding: 0.4rem 0.8rem; font-size: 0.78rem;">
+            Masuk dengan Akun Terdaftar
+          </button>
+        </div>
+
+        <!-- FORM DAFTAR BARU -->
+        <form id="registerForm" class="auth-form-layout">
+          <div>
+            <label for="regName" class="auth-label">
+              Nama Lengkap: <span style="color: #ef4444;">*</span>
+            </label>
+            <input type="text" id="regName" class="form-control-input" placeholder="Contoh: Muhammad Budi Pratama" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+            <div>
+              <label for="regWhatsapp" class="auth-label">
+                WhatsApp: <span style="color: #ef4444;">*</span>
+              </label>
+              <input type="tel" id="regWhatsapp" class="form-control-input" placeholder="081234567890" required>
+            </div>
+            <div>
+              <label for="regEmail" class="auth-label">
+                Email: <span style="color: #ef4444;">*</span>
+              </label>
+              <input type="email" id="regEmail" class="form-control-input" placeholder="nama@email.com" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+            <div>
+              <label for="regPurpose" class="auth-label">
+                Tujuan Penelitian: <span style="color: #ef4444;">*</span>
+              </label>
+              <select id="regPurpose" class="form-control-input" required>
+                <option value="skripsi" selected>Skripsi (S1)</option>
+                <option value="tesis">Tesis (S2)</option>
+                <option value="disertasi">Disertasi (S3)</option>
+                <option value="publikasi">Publikasi Jurnal / Dosen</option>
+              </select>
+            </div>
+            <div>
+              <label for="regInstitution" class="auth-label">
+                Institusi / Universitas:
+              </label>
+              <input type="text" id="regInstitution" class="form-control-input" placeholder="Contoh: Universitas Indonesia">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-search auth-submit-btn">
+            Daftar & Mulai Riset
+          </button>
+        </form>
+
+        <!-- FORM MASUK (LOGIN) -->
+        <div id="waLoginForm" style="display: none;" class="auth-form-layout">
+          <div>
+            <label for="loginWaInput" class="auth-label">
+              Nomor WhatsApp Terdaftar:
+            </label>
+            <input type="tel" id="loginWaInput" class="form-control-input" placeholder="081234567890">
+            <span style="font-size: 0.74rem; color: #64748b; margin-top: 0.25rem; display: block;">
+              Masukkan nomor WhatsApp yang Anda gunakan saat mendaftar.
+            </span>
+          </div>
+
+          <button type="button" id="btnLoginWithWa" class="btn-search auth-submit-btn">
+            Masuk ke Akun
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>
+      Basis data rujukan terhubung ke <strong>OpenAlex</strong>, <strong>DOAJ</strong>, dan <strong>Crossref</strong> (>250 juta publikasi ilmiah).
+    </p>
+    <p style="margin-top: 0.5rem; font-weight: 700; color: #1e293b; font-size: 0.9rem;">
+      JournalSearch — Academic Research Engine
+    </p>
+  </footer>
+
+  <!-- Midtrans Snap.js Script -->
+  <script id="midtransSnapScript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="SB-Mid-client-DaJUK8F_z4TcxoeX"></script>
+  <script id="mainScript" src="app.js" onerror="window.__handleScriptFallback && window.__handleScriptFallback(this)"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+================================================================================
+        PANDUAN LENGKAP PENGATURAN PAYMENT GATEWAY MIDTRANS
+             (Sistem Pencari Jurnal Skripsi & Tesis)
+================================================================================
+
+Aplikasi ini telah siap terhubung 100% dengan Midtrans Payment Gateway.
+Saat ini sistem berjalan dalam [MODE PLACEHOLDER (DEMO)], sehingga Anda bisa
+menguji alur pembayaran lunas instan kapan saja tanpa terhambat.
+
+Ketika Anda siap menghubungkan akun Midtrans resmi, ikuti 3 langkah mudah berikut:
+
+--------------------------------------------------------------------------------
+LANGKAH 1: DAFTAR AKUN MIDTRANS (GRATIS)
+--------------------------------------------------------------------------------
+1. Buka situs resmi: https://dashboard.midtrans.com
+2. Klik tombol "Register" / "Daftar".
+3. Isi nama, email bisnis/pribadi, nomor HP, dan password.
+4. Verifikasi email Anda.
+5. Anda akan langsung mendapatkan akses ke Dashboard Midtrans Sandbox (Gratis).
+
+--------------------------------------------------------------------------------
+LANGKAH 2: SALIN SERVER KEY & CLIENT KEY
+--------------------------------------------------------------------------------
+1. Masuk ke Dashboard Midtrans (https://dashboard.midtrans.com).
+2. Pastikan tombol di kiri atas berada pada mode: "SANDBOX" (untuk uji coba)
+   atau "PRODUCTION" (jika sudah aktif live).
+3. Di bilah menu sebelah kiri, klik:
+   [Settings] -> [Access Keys]
+4. Anda akan melihat:
+   - Merchant ID (contoh: G123456789)
+   - Client Key  (contoh: SB-Mid-client-xxxxxxxxxxxx)
+   - Server Key  (contoh: SB-Mid-server-xxxxxxxxxxxx)
+5. Salin (Copy) kedua kunci tersebut.
+
+--------------------------------------------------------------------------------
+LANGKAH 3: CARA MEMASANG KUNCI KE APLIKASI (PILIH SALAH SATU)
+--------------------------------------------------------------------------------
+
+>>> CARA A (PALING MUDAH - LANGSUNG DARI WEB):
+1. Buka aplikasi web Pencari Jurnal Skripsi.
+2. Klik tombol [âš™ï¸ Pengaturan Sistem] di navbar kanan atas.
+3. Gulir ke bagian "ðŸ’³ Konfigurasi Midtrans Payment Gateway".
+4. Pilih Lingkungan: "ðŸ§ª Sandbox" atau "ðŸš€ Production".
+5. Tempel (Paste) Client Key dan Server Key Anda.
+6. Klik tombol [ðŸ’¾ Simpan Konfigurasi Midtrans].
+7. Selesai! Status akan otomatis berubah menjadi:
+   ðŸŸ¢ Terhubung (ðŸ§ª Sandbox) atau ðŸŸ¢ Terhubung (ðŸš€ Production).
+
+>>> CARA B (LEWAT FILE KONFIGURASI):
+1. Buka file: [midtrans.config.json] di folder project JournalSearch.
+2. Ganti teks placeholder dengan kunci asli Anda:
+   {
+     "isProduction": false,
+     "clientKey": "SB-Mid-client-KUNCI_ASLI_ANDA",
+     "serverKey": "SB-Mid-server-KUNCI_ASLI_ANDA",
+     "merchantId": "G123456789"
+   }
+3. Simpan file. Perubahan langsung aktif otomatis tanpa restart server!
+
+--------------------------------------------------------------------------------
+LANGKAH 4: SETTING URL NOTIFIKASI WEBHOOK (OPSIONAL - UNTUK SERVER LIVE)
+--------------------------------------------------------------------------------
+Jika aplikasi Anda sudah di-deploy ke server online / hosting berdomain:
+1. Di Dashboard Midtrans -> [Settings] -> [Configuration].
+2. Masukkan Payment Notification URL:
+   https://domain-anda.com/api/payment/notification
+3. Klik [Save Changes].
+(Untuk localhost / offline di komputer lokal, sistem menggunakan verifikasi langsung).
+
+--------------------------------------------------------------------------------
+FITUR PEMBAYARAN YANG DIDUKUNG MIDTRANS:
+--------------------------------------------------------------------------------
+âœ“ QRIS Instan (BCA, Mandiri, BRI, BNI, GoPay, OVO, Dana, ShopeePay, LinkAja)
+âœ“ Virtual Account Bank (BCA VA, Mandiri VA, BNI VA, BRI VA, Permata VA)
+âœ“ E-Wallet Direct (GoPay, ShopeePay)
+âœ“ Kartu Kredit & Debit Visa / Mastercard / JCB / American Express
+âœ“ Gerai Ritel (Indomaret & Alfamart)
+
+Jika ada pertanyaan seputar aktivasi Midtrans, hubungi:
+WhatsApp Bantuan: Kontak Customer Service / Admin JournalSearch
+================================================================================

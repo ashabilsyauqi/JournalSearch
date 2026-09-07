@@ -1,0 +1,21 @@
+{
+  "name": "sistem-pencari-jurnal",
+  "version": "1.0.0",
+  "description": "Sistem Cerdas Rekomendasi Jurnal Ilmiah Berdasarkan Judul Skripsi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-search.js"
+  },
+  "keywords": [
+    "jurnal",
+    "skripsi",
+    "rekomendasi",
+    "openalex",
+    "crossref",
+    "daftar-pustaka",
+    "sitasi"
+  ],
+  "author": "JournalSearch Team",
+  "license": "MIT"
+}

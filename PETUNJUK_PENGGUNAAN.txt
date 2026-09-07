@@ -1,0 +1,26 @@
+============================================================
+  PANDUAN PENGGUNAAN SISTEM PENCARI JURNAL ILMIAH SKRIPSI
+  JournalSearch Academic Edition
+============================================================
+
+Terima kasih telah menggunakan aplikasi JournalSearch!
+
+CARA MEMASANG SHORTCUT DI DESKTOP:
+1. Ekstrak (Unzip) seluruh berkas zip ini ke folder mana saja.
+2. Klik ganda (double-click) berkas:
+   --> "1-KLIK-DISINI-BUKA-DAN-PASANG-SHORTCUT.bat"
+   atau "PASANG_SHORTCUT_DESKTOP.vbs"
+3. Shortcut dengan ikon resmi aplikasi akan otomatis terpasang
+   di Desktop Anda.
+4. Aplikasi akan otomatis terbuka di browser dan langsung
+   siap digunakan untuk mencari jurnal acuan skripsi!
+
+KETERANGAN FITUR APLIKASI:
+- Komposisi 75% Jurnal Indonesia (SINTA/Garuda/DOAJ) & 25% Jurnal Internasional (Scopus/OpenAlex/Crossref).
+- Rekomendasi bab skripsi otomatis (Bab 1, Bab 2, Bab 3, Bab 4).
+- Dilengkapi format sitasi APA 7th Edition & ekspor daftar pustaka.
+- Dapat berjalan mandiri (standalone) di semua peramban (Chrome, Edge, Firefox).
+
+Bantuan & Konsultasi:
+Hubungi Customer Service / Admin JournalSearch
+============================================================

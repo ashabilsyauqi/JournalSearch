@@ -1,0 +1,12 @@
+{
+  "_petunjuk": "Konfigurasi akun Midtrans Sandbox aktif",
+  "isProduction": false,
+  "clientKey": "SB-Mid-client-DaJUK8F_z4TcxoeX",
+  "serverKey": "SB-Mid-server-MCYu6evcz6fch1r9DhK5xWcN",
+  "merchantId": "G740209003",
+  "caraMendapatkanKey": [
+    "1. Buka https://dashboard.midtrans.com dan daftar akun gratis (mode Sandbox untuk uji coba).",
+    "2. Masuk ke menu: Pengaturan (Settings) -> Access Keys.",
+    "3. Salin Client Key dan Server Key ke file ini atau tempel langsung di Pengaturan Sistem di web."
+  ]
+}
