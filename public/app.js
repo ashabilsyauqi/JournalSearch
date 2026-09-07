@@ -257,6 +257,17 @@ const btnLoginWithWa = document.getElementById('btnLoginWithWa');
 const btnSwitchToLoginWithWa = document.getElementById('btnSwitchToLoginWithWa');
 const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
 
+// Google 1-Click Modal Elements
+const googleOneClickModal = document.getElementById('googleOneClickModal');
+const btnGoogleModalClose = document.getElementById('btnGoogleModalClose');
+const googleOneClickAccountCard = document.getElementById('googleOneClickAccountCard');
+const gCardAvatar = document.getElementById('gCardAvatar');
+const gCardName = document.getElementById('gCardName');
+const gCardEmail = document.getElementById('gCardEmail');
+const gCustomEmailInput = document.getElementById('gCustomEmailInput');
+const gCustomNameInput = document.getElementById('gCustomNameInput');
+const btnGoogle1ClickSubmit = document.getElementById('btnGoogle1ClickSubmit');
+
 const regName = document.getElementById('regName');
 const regWhatsapp = document.getElementById('regWhatsapp');
 const regEmail = document.getElementById('regEmail');
@@ -637,7 +648,17 @@ function onAuthSuccess(user, message = '') {
   }
 }
 
-// Google Authentication Handlers
+// Google Authentication & One-Click API Handlers
+function getGoogleClientId() {
+  const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
+  if (metaTag && metaTag.getAttribute('content')) {
+    return metaTag.getAttribute('content');
+  }
+  return localStorage.getItem('google_client_id') ||
+         window.GOOGLE_CLIENT_ID ||
+         '1047128919013-example.apps.googleusercontent.com';
+}
+
 function decodeJwtResponse(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -654,59 +675,9 @@ function decodeJwtResponse(token) {
   }
 }
 
-function handleGoogleSignInResponse(response) {
-  if (!response || !response.credential) return;
-  const payload = decodeJwtResponse(response.credential);
-  if (!payload) return;
-
-  const googleEmail = (payload.email || 'mahasiswa@gmail.com').toLowerCase();
-  const googleName = payload.name || 'Pengguna Google';
-
-  const users = getRegisteredUsers();
-  let user = users.find(u => u.email && u.email.toLowerCase() === googleEmail);
-  if (!user) {
-    user = {
-      id: 'usr_g_' + (payload.sub || Date.now()),
-      name: googleName,
-      whatsapp: '0812' + Math.floor(10000000 + Math.random() * 90000000),
-      rawWhatsapp: '-',
-      email: googleEmail,
-      purpose: 'skripsi',
-      purposeLabel: 'Penyusunan Skripsi S1',
-      institution: 'Universitas / Perguruan Tinggi',
-      registeredAt: new Date().toISOString(),
-      picture: payload.picture || '',
-      authProvider: 'google'
-    };
-    users.push(user);
-    saveRegisteredUsers(users);
-    try {
-      fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user)
-      }).catch(() => {});
-    } catch (err) {}
-  }
-
-  onAuthSuccess(user, `Berhasil masuk dengan Google (${user.name})! Akses uji coba 5 menit dimulai.`);
-}
-
-function handleGoogleButtonClick() {
-  if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
-    window.google.accounts.id.prompt();
-    return;
-  }
-
-  // Quick fallback modal/prompt if Google Client ID is not explicitly set in environment
-  const sampleNames = ['Ahmad Fauzi', 'Siti Rahma', 'Budi Santoso', 'Dian Pratama', 'Rizky Ramadhan'];
-  const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-  const inputEmail = prompt('Masuk dengan Akun Google (Email Gmail):', `${randomName.toLowerCase().replace(/\s+/g, '')}@gmail.com`);
-  if (!inputEmail || !inputEmail.trim()) return;
-
-  const inputName = prompt('Nama Lengkap Google Anda:', randomName) || randomName;
-  const cleanEmail = inputEmail.trim().toLowerCase();
-  const cleanName = inputName.trim();
+function loginWithGoogleUser(email, name, picture = '') {
+  const cleanEmail = (email || 'mahasiswa@gmail.com').trim().toLowerCase();
+  const cleanName = (name || 'Pengguna Google').trim();
 
   const users = getRegisteredUsers();
   let user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
@@ -721,6 +692,7 @@ function handleGoogleButtonClick() {
       purposeLabel: 'Penyusunan Skripsi S1',
       institution: 'Universitas / Perguruan Tinggi',
       registeredAt: new Date().toISOString(),
+      picture: picture || '',
       authProvider: 'google'
     };
     users.push(user);
@@ -734,11 +706,119 @@ function handleGoogleButtonClick() {
     } catch (err) {}
   }
 
+  closeGoogleOneClickModal();
   onAuthSuccess(user, `Berhasil masuk dengan Google (${user.name})! Akses uji coba 5 menit dimulai.`);
+}
+
+function handleGoogleSignInResponse(response) {
+  if (!response || !response.credential) return;
+  const payload = decodeJwtResponse(response.credential);
+  if (!payload) return;
+
+  const googleEmail = payload.email || 'mahasiswa@gmail.com';
+  const googleName = payload.name || 'Pengguna Google';
+  const picture = payload.picture || '';
+
+  loginWithGoogleUser(googleEmail, googleName, picture);
+}
+
+function openGoogleOneClickModal() {
+  const savedGoogleEmail = localStorage.getItem('last_google_email') || 'mahasiswa.riset@gmail.com';
+  const savedGoogleName = localStorage.getItem('last_google_name') || 'Mahasiswa Peneliti';
+
+  if (gCardName) gCardName.textContent = savedGoogleName;
+  if (gCardEmail) gCardEmail.textContent = savedGoogleEmail;
+  if (gCardAvatar) gCardAvatar.textContent = (savedGoogleName[0] || 'G').toUpperCase();
+
+  if (googleOneClickModal) googleOneClickModal.style.display = 'flex';
+}
+
+function closeGoogleOneClickModal() {
+  if (googleOneClickModal) googleOneClickModal.style.display = 'none';
+}
+
+function handleGoogleButtonClick() {
+  // 1. Try Google Identity Services One Tap prompt
+  if (window.google && window.google.accounts && window.google.accounts.id) {
+    try {
+      window.google.accounts.id.prompt();
+    } catch (e) {}
+  }
+  // 2. Open our sleek 1-click modal for immediate action
+  openGoogleOneClickModal();
+}
+
+function initGoogleAuth() {
+  if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+    setTimeout(initGoogleAuth, 600);
+    return;
+  }
+
+  const clientId = getGoogleClientId();
+  try {
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleSignInResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+
+    const container = document.getElementById('googleBtnContainer');
+    if (container) {
+      container.innerHTML = '';
+      window.google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        type: 'standard',
+        shape: 'rectangular',
+        text: 'signin_with',
+        logo_alignment: 'left',
+        width: 340
+      });
+    }
+
+    // Auto-prompt One-Tap on first visit for guests
+    if (!getCurrentUser()) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          console.log('Google One Tap notice:', notification.getNotDisplayedReason());
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Google Identity initialization:', err);
+  }
 }
 
 if (btnGoogleSignIn) {
   btnGoogleSignIn.addEventListener('click', handleGoogleButtonClick);
+}
+
+if (btnGoogleModalClose) {
+  btnGoogleModalClose.addEventListener('click', closeGoogleOneClickModal);
+}
+
+if (googleOneClickAccountCard) {
+  googleOneClickAccountCard.addEventListener('click', () => {
+    const email = (gCardEmail && gCardEmail.textContent.trim()) || 'mahasiswa.riset@gmail.com';
+    const name = (gCardName && gCardName.textContent.trim()) || 'Mahasiswa Peneliti';
+    localStorage.setItem('last_google_email', email);
+    localStorage.setItem('last_google_name', name);
+    loginWithGoogleUser(email, name);
+  });
+}
+
+if (btnGoogle1ClickSubmit) {
+  btnGoogle1ClickSubmit.addEventListener('click', () => {
+    const customEmail = gCustomEmailInput && gCustomEmailInput.value.trim();
+    const customName = gCustomNameInput && gCustomNameInput.value.trim();
+    const email = customEmail || (gCardEmail && gCardEmail.textContent.trim()) || 'mahasiswa.riset@gmail.com';
+    const name = customName || (gCardName && gCardName.textContent.trim()) || 'Mahasiswa Peneliti';
+
+    localStorage.setItem('last_google_email', email);
+    localStorage.setItem('last_google_name', name);
+    loginWithGoogleUser(email, name);
+  });
 }
 
 // Login via WhatsApp
@@ -2161,6 +2241,7 @@ window.addEventListener('click', (e) => {
   if (e.target === registerModal) closeRegisterModal();
   if (e.target === userProfileModal) closeUserProfileModal();
   if (e.target === pdfPreviewModal) closePdfPreview();
+  if (e.target === googleOneClickModal) closeGoogleOneClickModal();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -2172,6 +2253,7 @@ window.addEventListener('keydown', (e) => {
     closeRegisterModal();
     closeUserProfileModal();
     closePdfPreview();
+    closeGoogleOneClickModal();
   }
 });
 
