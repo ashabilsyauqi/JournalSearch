@@ -6,6 +6,7 @@ let bookmarkedPapers = JSON.parse(localStorage.getItem('skripsi_bookmarked_paper
 let currentCitePaper = null;
 let currentCiteStyle = 'apa';
 let pendingSearchQuery = null;
+let pendingActionAfterAuth = null;
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
@@ -635,10 +636,20 @@ if (btnUpgradeFromProfile) {
 // Global Auth Success Callback Handler
 function onAuthSuccess(user, message = '') {
   setCurrentUser(user);
-  startTrialIfNew();
   closeRegisterModal();
   updateSubscriptionUI();
-  showToast(message || `Selamat datang, ${user.name}! Akses uji coba gratis 5 menit telah aktif.`);
+  showToast(message || `Selamat datang, ${user.name}! Akun Anda aktif.`);
+
+  if (pendingActionAfterAuth) {
+    const act = pendingActionAfterAuth;
+    pendingActionAfterAuth = null;
+    if (act.action === 'checkout') {
+      setTimeout(() => {
+        openPaymentGateway(act.title);
+      }, 300);
+      return;
+    }
+  }
 
   if (pendingSearchQuery) {
     const queryToExecute = pendingSearchQuery;
@@ -905,7 +916,7 @@ if (registerForm) {
 }
 
 // ====================================================================
-// 5-MINUTE FREE TRIAL MANAGEMENT (GATED PER USER)
+// 5-MINUTE FREE TRIAL MANAGEMENT (FREE ON FIRST VISIT WITHOUT LOGIN)
 // ====================================================================
 const TRIAL_DURATION_SECONDS = 5 * 60;
 let trialAlertFired = false;
@@ -913,18 +924,13 @@ let trialAlertFired = false;
 function getTrialState() {
   const isPaid = isSubscriptionActive();
   if (isPaid) {
-    return { isActive: true, isPaid: true, remainingSeconds: 999999, hasStarted: true, isGuest: false };
+    return { isActive: true, isPaid: true, remainingSeconds: 999999, hasStarted: true };
   }
 
-  const user = getCurrentUser();
-  if (!user) {
-    return { isActive: false, isPaid: false, remainingSeconds: TRIAL_DURATION_SECONDS, hasStarted: false, isGuest: true };
-  }
-
-  const userTrialKey = 'skripsi_trial_start_' + user.id;
-  const startVal = localStorage.getItem(userTrialKey) || localStorage.getItem('skripsi_trial_start');
+  let startVal = localStorage.getItem('skripsi_trial_start');
   if (!startVal) {
-    return { isActive: true, isPaid: false, remainingSeconds: TRIAL_DURATION_SECONDS, hasStarted: false, isGuest: false };
+    startVal = Date.now().toString();
+    localStorage.setItem('skripsi_trial_start', startVal);
   }
 
   const startTime = parseInt(startVal, 10);
@@ -935,8 +941,7 @@ function getTrialState() {
     isActive: remainingSec > 0,
     isPaid: false,
     remainingSeconds: remainingSec,
-    hasStarted: true,
-    isGuest: false
+    hasStarted: true
   };
 }
 
@@ -948,21 +953,12 @@ function formatTrialTime(sec) {
 
 function startTrialIfNew() {
   if (isSubscriptionActive()) return;
-  const user = getCurrentUser();
-  if (!user) return;
-  const userTrialKey = 'skripsi_trial_start_' + user.id;
-  if (!localStorage.getItem(userTrialKey) && !localStorage.getItem('skripsi_trial_start')) {
-    const now = Date.now().toString();
-    localStorage.setItem(userTrialKey, now);
-    localStorage.setItem('skripsi_trial_start', now);
+  if (!localStorage.getItem('skripsi_trial_start')) {
+    localStorage.setItem('skripsi_trial_start', Date.now().toString());
   }
 }
 
 function resetTrial() {
-  const user = getCurrentUser();
-  if (user) {
-    localStorage.removeItem('skripsi_trial_start_' + user.id);
-  }
   localStorage.removeItem('skripsi_trial_start');
   trialAlertFired = false;
   updateSubscriptionUI();
@@ -1157,21 +1153,7 @@ function updateSubscriptionUI() {
   }
 
   const trial = getTrialState();
-  if (trial.isGuest) {
-    subStatusBadge.className = 'sub-status-pill trial';
-    subStatusText.textContent = 'Mulai Riset: Gratis 5 Menit';
-    if (btnUpgradeNav) {
-      btnUpgradeNav.textContent = 'Masuk / Daftar';
-      btnUpgradeNav.title = 'Masuk atau daftar untuk mengaktifkan akses uji coba gratis 5 menit';
-    }
-  } else if (!trial.hasStarted) {
-    subStatusBadge.className = 'sub-status-pill trial';
-    subStatusText.textContent = 'Uji Coba: 05:00';
-    if (btnUpgradeNav) {
-      btnUpgradeNav.textContent = 'Beli Akses';
-      btnUpgradeNav.title = 'Beli paket akses riset penuh';
-    }
-  } else if (trial.isActive) {
+  if (trial.isActive) {
     subStatusBadge.className = 'sub-status-pill trial';
     subStatusText.textContent = `Uji Coba: ${formatTrialTime(trial.remainingSeconds)}`;
     if (btnUpgradeNav) {
@@ -1188,7 +1170,7 @@ function updateSubscriptionUI() {
 
     if (!trialAlertFired) {
       trialAlertFired = true;
-      showToast('Masa uji coba telah selesai. Silakan pilih paket riset untuk akses penuh.');
+      showToast('Masa uji coba 5 menit gratis telah selesai. Silakan pilih paket riset untuk akses penuh.');
       if (allJournals.length > 0) renderJournalsList(allJournals);
     }
   }
@@ -1198,11 +1180,6 @@ function updateSubscriptionUI() {
 if (btnUpgradeNav) {
   btnUpgradeNav.addEventListener('click', (e) => {
     e.stopPropagation();
-    const user = getCurrentUser();
-    if (!user) {
-      openRegisterModal('register');
-      return;
-    }
     const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
     openPaymentGateway(currentTitle);
   });
@@ -1210,11 +1187,6 @@ if (btnUpgradeNav) {
 
 if (subStatusBadge) {
   subStatusBadge.addEventListener('click', () => {
-    const user = getCurrentUser();
-    if (!user) {
-      openRegisterModal('register');
-      return;
-    }
     const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
     openPaymentGateway(currentTitle);
   });
@@ -1232,7 +1204,7 @@ setInterval(() => {
 }, 1000);
 
 // ====================================================================
-// SEARCH EXECUTION & ENGINE
+// SEARCH EXECUTION & ENGINE (FREE 5 MINUTES WITHOUT LOGIN)
 // ====================================================================
 if (searchForm) {
   searchForm.addEventListener('submit', (e) => {
@@ -1248,24 +1220,13 @@ async function executeSearch(forcePaid = false) {
     return;
   }
 
-  const user = getCurrentUser();
-  if (!user) {
-    pendingSearchQuery = title;
-    openRegisterModal('register');
-    showToast('Silakan masuk atau daftar untuk mengaktifkan akses uji coba gratis 5 menit.');
-    return;
-  }
-
   const isPaid = isSubscriptionActive();
   const trial = getTrialState();
 
-  if (!isPaid && !forcePaid) {
-    if (!trial.hasStarted) {
-      startTrialIfNew();
-    } else if (!trial.isActive) {
-      openPaymentGateway(title);
-      return;
-    }
+  // If subscription is not paid and 5-min trial has expired, require login -> payment
+  if (!isPaid && !forcePaid && !trial.isActive) {
+    openPaymentGateway(title);
+    return;
   }
 
   const settings = getSystemSettings();
@@ -1969,8 +1930,19 @@ function selectPackagePlan(plan) {
 }
 
 function openPaymentGateway(title) {
+  const currentTitle = title || (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
+  const user = getCurrentUser();
+
+  // If user is not logged in yet, prompt login -> then open payment gateway upon successful login
+  if (!user) {
+    pendingActionAfterAuth = { action: 'checkout', title: currentTitle };
+    openRegisterModal('register');
+    showToast('Masa uji coba gratis telah selesai. Silakan masuk atau daftar akun terlebih dahulu untuk memilih paket lisensi.');
+    return;
+  }
+
   if (paymentTitlePreview) {
-    paymentTitlePreview.textContent = `Judul Skripsi: "${title || '-'}"`;
+    paymentTitlePreview.textContent = `Judul Skripsi: "${currentTitle}"`;
   }
   selectPackagePlan(currentSelectedPackage || 'monthly');
   if (paymentGatewayModal) paymentGatewayModal.style.display = 'flex';
