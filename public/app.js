@@ -651,12 +651,13 @@ function onAuthSuccess(user, message = '') {
 // Google Authentication & One-Click API Handlers
 function getGoogleClientId() {
   const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
-  if (metaTag && metaTag.getAttribute('content')) {
+  if (metaTag && metaTag.getAttribute('content') && !metaTag.getAttribute('content').includes('example')) {
     return metaTag.getAttribute('content');
   }
-  return localStorage.getItem('google_client_id') ||
-         window.GOOGLE_CLIENT_ID ||
-         '1047128919013-example.apps.googleusercontent.com';
+  const saved = localStorage.getItem('google_client_id');
+  if (saved && !saved.includes('example')) return saved;
+  if (window.GOOGLE_CLIENT_ID && !window.GOOGLE_CLIENT_ID.includes('example')) return window.GOOGLE_CLIENT_ID;
+  return null;
 }
 
 function decodeJwtResponse(token) {
@@ -676,8 +677,8 @@ function decodeJwtResponse(token) {
 }
 
 function loginWithGoogleUser(email, name, picture = '') {
-  const cleanEmail = (email || 'mahasiswa@gmail.com').trim().toLowerCase();
-  const cleanName = (name || 'Pengguna Google').trim();
+  const cleanEmail = (email || 'ashabilsyauqi@gmail.com').trim().toLowerCase();
+  const cleanName = (name || 'Ashabil Syauqi').trim();
 
   const users = getRegisteredUsers();
   let user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
@@ -707,7 +708,7 @@ function loginWithGoogleUser(email, name, picture = '') {
   }
 
   closeGoogleOneClickModal();
-  onAuthSuccess(user, `Berhasil masuk dengan Google (${user.name})! Akses uji coba 5 menit dimulai.`);
+  onAuthSuccess(user, `Berhasil masuk sebagai ${user.name}! Akses uji coba 5 menit dimulai.`);
 }
 
 function handleGoogleSignInResponse(response) {
@@ -715,20 +716,20 @@ function handleGoogleSignInResponse(response) {
   const payload = decodeJwtResponse(response.credential);
   if (!payload) return;
 
-  const googleEmail = payload.email || 'mahasiswa@gmail.com';
-  const googleName = payload.name || 'Pengguna Google';
+  const googleEmail = payload.email || 'ashabilsyauqi@gmail.com';
+  const googleName = payload.name || 'Ashabil Syauqi';
   const picture = payload.picture || '';
 
   loginWithGoogleUser(googleEmail, googleName, picture);
 }
 
 function openGoogleOneClickModal() {
-  const savedGoogleEmail = localStorage.getItem('last_google_email') || 'mahasiswa.riset@gmail.com';
-  const savedGoogleName = localStorage.getItem('last_google_name') || 'Mahasiswa Peneliti';
+  const savedGoogleEmail = localStorage.getItem('last_google_email') || 'ashabilsyauqi@gmail.com';
+  const savedGoogleName = localStorage.getItem('last_google_name') || 'Ashabil Syauqi';
 
   if (gCardName) gCardName.textContent = savedGoogleName;
   if (gCardEmail) gCardEmail.textContent = savedGoogleEmail;
-  if (gCardAvatar) gCardAvatar.textContent = (savedGoogleName[0] || 'G').toUpperCase();
+  if (gCardAvatar) gCardAvatar.textContent = (savedGoogleName[0] || 'A').toUpperCase();
 
   if (googleOneClickModal) googleOneClickModal.style.display = 'flex';
 }
@@ -738,23 +739,23 @@ function closeGoogleOneClickModal() {
 }
 
 function handleGoogleButtonClick() {
-  // 1. Try Google Identity Services One Tap prompt
-  if (window.google && window.google.accounts && window.google.accounts.id) {
+  const clientId = getGoogleClientId();
+  if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
     try {
       window.google.accounts.id.prompt();
     } catch (e) {}
   }
-  // 2. Open our sleek 1-click modal for immediate action
   openGoogleOneClickModal();
 }
 
 function initGoogleAuth() {
   if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-    setTimeout(initGoogleAuth, 600);
     return;
   }
 
   const clientId = getGoogleClientId();
+  if (!clientId) return; // Only init if valid client ID exists to avoid 401 error
+
   try {
     window.google.accounts.id.initialize({
       client_id: clientId,
@@ -763,21 +764,6 @@ function initGoogleAuth() {
       cancel_on_tap_outside: true
     });
 
-    const container = document.getElementById('googleBtnContainer');
-    if (container) {
-      container.innerHTML = '';
-      window.google.accounts.id.renderButton(container, {
-        theme: 'outline',
-        size: 'large',
-        type: 'standard',
-        shape: 'rectangular',
-        text: 'signin_with',
-        logo_alignment: 'left',
-        width: 340
-      });
-    }
-
-    // Auto-prompt One-Tap on first visit for guests
     if (!getCurrentUser()) {
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed()) {
