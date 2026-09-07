@@ -258,6 +258,13 @@ const btnLoginWithWa = document.getElementById('btnLoginWithWa');
 const btnSwitchToLoginWithWa = document.getElementById('btnSwitchToLoginWithWa');
 const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
 
+// Elements: Floating Google One Tap Widget (Top Right Corner)
+const googleOneTapFloatingWidget = document.getElementById('googleOneTapFloatingWidget');
+const btnDismissGoogleOneTap = document.getElementById('btnDismissGoogleOneTap');
+const btnSelectGoogleOneTapAccount = document.getElementById('btnSelectGoogleOneTapAccount');
+const btnContinueWithGoogleOneTap = document.getElementById('btnContinueWithGoogleOneTap');
+const gOneTapDomainName = document.getElementById('gOneTapDomainName');
+
 const regName = document.getElementById('regName');
 const regWhatsapp = document.getElementById('regWhatsapp');
 const regEmail = document.getElementById('regEmail');
@@ -625,6 +632,7 @@ if (btnUpgradeFromProfile) {
 // Global Auth Success Callback Handler
 function onAuthSuccess(user, message = '') {
   setCurrentUser(user);
+  hideGoogleOneTapPrompt();
   closeRegisterModal();
   updateSubscriptionUI();
   showToast(message || `Selamat datang, ${user.name}! Akun Anda aktif.`);
@@ -723,6 +731,27 @@ function handleGoogleSignInResponse(response) {
   loginWithGoogleUser(googleEmail, googleName, picture);
 }
 
+function showGoogleOneTapPrompt() {
+  if (getCurrentUser()) return;
+  if (sessionStorage.getItem('onetap_dismissed') === 'true') return;
+  if (!googleOneTapFloatingWidget) return;
+
+  if (gOneTapDomainName) {
+    const host = window.location.hostname;
+    gOneTapDomainName.textContent = host ? host.replace(/^www\./, '') : 'journalsearch';
+  }
+  googleOneTapFloatingWidget.style.display = 'block';
+}
+
+function hideGoogleOneTapPrompt(dismissForSession = false) {
+  if (googleOneTapFloatingWidget) {
+    googleOneTapFloatingWidget.style.display = 'none';
+  }
+  if (dismissForSession) {
+    sessionStorage.setItem('onetap_dismissed', 'true');
+  }
+}
+
 function handleGoogleButtonClick() {
   const savedGoogleEmail = localStorage.getItem('last_google_email') || 'ashabilsyauqi@gmail.com';
   const savedGoogleName = localStorage.getItem('last_google_name') || 'Ashabil Syauqi';
@@ -732,6 +761,13 @@ function handleGoogleButtonClick() {
 }
 
 function initGoogleAuth() {
+  // Show top-right Google One Tap floating prompt for instant 1-click login
+  if (!getCurrentUser() && sessionStorage.getItem('onetap_dismissed') !== 'true') {
+    setTimeout(() => {
+      showGoogleOneTapPrompt();
+    }, 1200);
+  }
+
   if (!window.google || !window.google.accounts || !window.google.accounts.id) {
     return;
   }
@@ -761,6 +797,25 @@ function initGoogleAuth() {
 
 if (btnGoogleSignIn) {
   btnGoogleSignIn.addEventListener('click', handleGoogleButtonClick);
+}
+
+if (btnDismissGoogleOneTap) {
+  btnDismissGoogleOneTap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideGoogleOneTapPrompt(true);
+  });
+}
+
+if (btnSelectGoogleOneTapAccount) {
+  btnSelectGoogleOneTapAccount.addEventListener('click', () => {
+    handleGoogleButtonClick();
+  });
+}
+
+if (btnContinueWithGoogleOneTap) {
+  btnContinueWithGoogleOneTap.addEventListener('click', () => {
+    handleGoogleButtonClick();
+  });
 }
 
 // Login via WhatsApp
