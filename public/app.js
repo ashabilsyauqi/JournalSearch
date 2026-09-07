@@ -951,8 +951,8 @@ function updateSubscriptionUI() {
     subStatusBadge.className = 'sub-status-pill active';
     subStatusText.textContent = `${subInfo.badgeName} • Sisa ${subInfo.remainingFormatted}`;
     if (btnUpgradeNav) {
-      btnUpgradeNav.textContent = 'Lisensi Aktif';
-      btnUpgradeNav.title = 'Lihat status lisensi riset';
+      btnUpgradeNav.textContent = 'Upgrade / Perpanjang';
+      btnUpgradeNav.title = 'Beli paket baru atau perpanjang masa aktif lisensi';
     }
     return;
   }
@@ -961,15 +961,24 @@ function updateSubscriptionUI() {
   if (!trial.hasStarted) {
     subStatusBadge.className = 'sub-status-pill trial';
     subStatusText.textContent = 'Uji Coba: 05:00';
-    if (btnUpgradeNav) btnUpgradeNav.textContent = 'Beli Akses';
+    if (btnUpgradeNav) {
+      btnUpgradeNav.textContent = 'Beli Akses';
+      btnUpgradeNav.title = 'Beli paket akses riset penuh';
+    }
   } else if (trial.isActive) {
     subStatusBadge.className = 'sub-status-pill trial';
     subStatusText.textContent = `Uji Coba: ${formatTrialTime(trial.remainingSeconds)}`;
-    if (btnUpgradeNav) btnUpgradeNav.textContent = 'Beli Akses';
+    if (btnUpgradeNav) {
+      btnUpgradeNav.textContent = 'Beli Akses';
+      btnUpgradeNav.title = 'Beli paket akses riset penuh (Sebelum masa uji coba selesai)';
+    }
   } else {
     subStatusBadge.className = 'sub-status-pill expired';
     subStatusText.textContent = 'Uji Coba Habis';
-    if (btnUpgradeNav) btnUpgradeNav.textContent = 'Beli Akses';
+    if (btnUpgradeNav) {
+      btnUpgradeNav.textContent = 'Beli Akses';
+      btnUpgradeNav.title = 'Aktifkan paket untuk membuka seluruh fitur';
+    }
 
     if (!trialAlertFired) {
       trialAlertFired = true;
@@ -977,6 +986,22 @@ function updateSubscriptionUI() {
       if (allJournals.length > 0) renderJournalsList(allJournals);
     }
   }
+}
+
+// Nav Upgrade Button & Status Pill Click Listeners
+if (btnUpgradeNav) {
+  btnUpgradeNav.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
+    openPaymentGateway(currentTitle);
+  });
+}
+
+if (subStatusBadge) {
+  subStatusBadge.addEventListener('click', () => {
+    const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
+    openPaymentGateway(currentTitle);
+  });
 }
 
 // Timer Ticker Loop
