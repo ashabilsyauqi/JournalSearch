@@ -5,6 +5,7 @@ let activeAnalysis = null;
 let bookmarkedPapers = JSON.parse(localStorage.getItem('skripsi_bookmarked_papers') || '[]');
 let currentCitePaper = null;
 let currentCiteStyle = 'apa';
+let pendingSearchQuery = null;
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
@@ -254,6 +255,7 @@ const waLoginForm = document.getElementById('waLoginForm');
 const loginWaInput = document.getElementById('loginWaInput');
 const btnLoginWithWa = document.getElementById('btnLoginWithWa');
 const btnSwitchToLoginWithWa = document.getElementById('btnSwitchToLoginWithWa');
+const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
 
 const regName = document.getElementById('regName');
 const regWhatsapp = document.getElementById('regWhatsapp');
@@ -607,6 +609,7 @@ if (btnLogoutUser) {
     const prev = getCurrentUser();
     setCurrentUser(null);
     closeUserProfileModal();
+    updateSubscriptionUI();
     showToast(`Akun ${prev?.name || ''} telah keluar.`);
   });
 }
@@ -616,6 +619,126 @@ if (btnUpgradeFromProfile) {
     const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
     openPaymentGateway(currentTitle);
   });
+}
+
+// Global Auth Success Callback Handler
+function onAuthSuccess(user, message = '') {
+  setCurrentUser(user);
+  startTrialIfNew();
+  closeRegisterModal();
+  updateSubscriptionUI();
+  showToast(message || `Selamat datang, ${user.name}! Akses uji coba gratis 5 menit telah aktif.`);
+
+  if (pendingSearchQuery) {
+    const queryToExecute = pendingSearchQuery;
+    pendingSearchQuery = null;
+    if (titleInput) titleInput.value = queryToExecute;
+    executeSearch();
+  }
+}
+
+// Google Authentication Handlers
+function decodeJwtResponse(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
+function handleGoogleSignInResponse(response) {
+  if (!response || !response.credential) return;
+  const payload = decodeJwtResponse(response.credential);
+  if (!payload) return;
+
+  const googleEmail = (payload.email || 'mahasiswa@gmail.com').toLowerCase();
+  const googleName = payload.name || 'Pengguna Google';
+
+  const users = getRegisteredUsers();
+  let user = users.find(u => u.email && u.email.toLowerCase() === googleEmail);
+  if (!user) {
+    user = {
+      id: 'usr_g_' + (payload.sub || Date.now()),
+      name: googleName,
+      whatsapp: '0812' + Math.floor(10000000 + Math.random() * 90000000),
+      rawWhatsapp: '-',
+      email: googleEmail,
+      purpose: 'skripsi',
+      purposeLabel: 'Penyusunan Skripsi S1',
+      institution: 'Universitas / Perguruan Tinggi',
+      registeredAt: new Date().toISOString(),
+      picture: payload.picture || '',
+      authProvider: 'google'
+    };
+    users.push(user);
+    saveRegisteredUsers(users);
+    try {
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      }).catch(() => {});
+    } catch (err) {}
+  }
+
+  onAuthSuccess(user, `Berhasil masuk dengan Google (${user.name})! Akses uji coba 5 menit dimulai.`);
+}
+
+function handleGoogleButtonClick() {
+  if (window.google && window.google.accounts && window.google.accounts.id && window.GOOGLE_CLIENT_ID) {
+    window.google.accounts.id.prompt();
+    return;
+  }
+
+  // Quick fallback modal/prompt if Google Client ID is not explicitly set in environment
+  const sampleNames = ['Ahmad Fauzi', 'Siti Rahma', 'Budi Santoso', 'Dian Pratama', 'Rizky Ramadhan'];
+  const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+  const inputEmail = prompt('Masuk dengan Akun Google (Email Gmail):', `${randomName.toLowerCase().replace(/\s+/g, '')}@gmail.com`);
+  if (!inputEmail || !inputEmail.trim()) return;
+
+  const inputName = prompt('Nama Lengkap Google Anda:', randomName) || randomName;
+  const cleanEmail = inputEmail.trim().toLowerCase();
+  const cleanName = inputName.trim();
+
+  const users = getRegisteredUsers();
+  let user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+  if (!user) {
+    user = {
+      id: 'usr_g_' + Date.now(),
+      name: cleanName,
+      whatsapp: '0812' + Math.floor(10000000 + Math.random() * 90000000),
+      rawWhatsapp: '-',
+      email: cleanEmail,
+      purpose: 'skripsi',
+      purposeLabel: 'Penyusunan Skripsi S1',
+      institution: 'Universitas / Perguruan Tinggi',
+      registeredAt: new Date().toISOString(),
+      authProvider: 'google'
+    };
+    users.push(user);
+    saveRegisteredUsers(users);
+    try {
+      fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      }).catch(() => {});
+    } catch (err) {}
+  }
+
+  onAuthSuccess(user, `Berhasil masuk dengan Google (${user.name})! Akses uji coba 5 menit dimulai.`);
+}
+
+if (btnGoogleSignIn) {
+  btnGoogleSignIn.addEventListener('click', handleGoogleButtonClick);
 }
 
 // Login via WhatsApp
@@ -641,9 +764,7 @@ if (btnLoginWithWa) {
       }
       return;
     }
-    setCurrentUser(found);
-    closeRegisterModal();
-    showToast(`Selamat datang kembali, ${found.name}! Akun Anda aktif.`);
+    onAuthSuccess(found, `Selamat datang kembali, ${found.name}! Akun Anda aktif.`);
   });
 }
 
@@ -683,9 +804,7 @@ if (registerForm) {
         if (btnSwitchToLoginWithWa) {
           btnSwitchToLoginWithWa.style.display = 'inline-block';
           btnSwitchToLoginWithWa.onclick = () => {
-            setCurrentUser(existing);
-            closeRegisterModal();
-            showToast(`Selamat datang kembali, ${existing.name}!`);
+            onAuthSuccess(existing, `Selamat datang kembali, ${existing.name}!`);
           };
         }
       }
@@ -706,7 +825,6 @@ if (registerForm) {
 
     users.push(newUser);
     saveRegisteredUsers(users);
-    setCurrentUser(newUser);
 
     try {
       fetch('/api/auth/register', {
@@ -716,13 +834,12 @@ if (registerForm) {
       }).catch(() => {});
     } catch (err) {}
 
-    closeRegisterModal();
-    showToast(`Registrasi Berhasil! Selamat datang, ${newUser.name}.`);
+    onAuthSuccess(newUser, `Registrasi Berhasil! Selamat datang, ${newUser.name}. Uji coba 5 menit aktif.`);
   });
 }
 
 // ====================================================================
-// 5-MINUTE FREE TRIAL MANAGEMENT
+// 5-MINUTE FREE TRIAL MANAGEMENT (GATED PER USER)
 // ====================================================================
 const TRIAL_DURATION_SECONDS = 5 * 60;
 let trialAlertFired = false;
@@ -730,12 +847,18 @@ let trialAlertFired = false;
 function getTrialState() {
   const isPaid = isSubscriptionActive();
   if (isPaid) {
-    return { isActive: true, isPaid: true, remainingSeconds: 999999, hasStarted: true };
+    return { isActive: true, isPaid: true, remainingSeconds: 999999, hasStarted: true, isGuest: false };
   }
 
-  const startVal = localStorage.getItem('skripsi_trial_start');
+  const user = getCurrentUser();
+  if (!user) {
+    return { isActive: false, isPaid: false, remainingSeconds: TRIAL_DURATION_SECONDS, hasStarted: false, isGuest: true };
+  }
+
+  const userTrialKey = 'skripsi_trial_start_' + user.id;
+  const startVal = localStorage.getItem(userTrialKey) || localStorage.getItem('skripsi_trial_start');
   if (!startVal) {
-    return { isActive: true, isPaid: false, remainingSeconds: TRIAL_DURATION_SECONDS, hasStarted: false };
+    return { isActive: true, isPaid: false, remainingSeconds: TRIAL_DURATION_SECONDS, hasStarted: false, isGuest: false };
   }
 
   const startTime = parseInt(startVal, 10);
@@ -746,7 +869,8 @@ function getTrialState() {
     isActive: remainingSec > 0,
     isPaid: false,
     remainingSeconds: remainingSec,
-    hasStarted: true
+    hasStarted: true,
+    isGuest: false
   };
 }
 
@@ -758,12 +882,21 @@ function formatTrialTime(sec) {
 
 function startTrialIfNew() {
   if (isSubscriptionActive()) return;
-  if (!localStorage.getItem('skripsi_trial_start')) {
-    localStorage.setItem('skripsi_trial_start', Date.now().toString());
+  const user = getCurrentUser();
+  if (!user) return;
+  const userTrialKey = 'skripsi_trial_start_' + user.id;
+  if (!localStorage.getItem(userTrialKey) && !localStorage.getItem('skripsi_trial_start')) {
+    const now = Date.now().toString();
+    localStorage.setItem(userTrialKey, now);
+    localStorage.setItem('skripsi_trial_start', now);
   }
 }
 
 function resetTrial() {
+  const user = getCurrentUser();
+  if (user) {
+    localStorage.removeItem('skripsi_trial_start_' + user.id);
+  }
   localStorage.removeItem('skripsi_trial_start');
   trialAlertFired = false;
   updateSubscriptionUI();
@@ -958,7 +1091,14 @@ function updateSubscriptionUI() {
   }
 
   const trial = getTrialState();
-  if (!trial.hasStarted) {
+  if (trial.isGuest) {
+    subStatusBadge.className = 'sub-status-pill trial';
+    subStatusText.textContent = 'Mulai Riset: Gratis 5 Menit';
+    if (btnUpgradeNav) {
+      btnUpgradeNav.textContent = 'Masuk / Daftar';
+      btnUpgradeNav.title = 'Masuk atau daftar untuk mengaktifkan akses uji coba gratis 5 menit';
+    }
+  } else if (!trial.hasStarted) {
     subStatusBadge.className = 'sub-status-pill trial';
     subStatusText.textContent = 'Uji Coba: 05:00';
     if (btnUpgradeNav) {
@@ -992,6 +1132,11 @@ function updateSubscriptionUI() {
 if (btnUpgradeNav) {
   btnUpgradeNav.addEventListener('click', (e) => {
     e.stopPropagation();
+    const user = getCurrentUser();
+    if (!user) {
+      openRegisterModal('register');
+      return;
+    }
     const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
     openPaymentGateway(currentTitle);
   });
@@ -999,6 +1144,11 @@ if (btnUpgradeNav) {
 
 if (subStatusBadge) {
   subStatusBadge.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) {
+      openRegisterModal('register');
+      return;
+    }
     const currentTitle = (titleInput && titleInput.value.trim()) || 'Topik Riset Skripsi / Tesis';
     openPaymentGateway(currentTitle);
   });
@@ -1029,6 +1179,14 @@ async function executeSearch(forcePaid = false) {
   const title = titleInput.value.trim();
   if (!title) {
     showToast('Silakan masukkan rencana judul skripsi terlebih dahulu!');
+    return;
+  }
+
+  const user = getCurrentUser();
+  if (!user) {
+    pendingSearchQuery = title;
+    openRegisterModal('register');
+    showToast('Silakan masuk atau daftar untuk mengaktifkan akses uji coba gratis 5 menit.');
     return;
   }
 
@@ -2022,3 +2180,4 @@ loadSystemSettingsToUI();
 updateNavUserUI();
 startTrialIfNew();
 updateSubscriptionUI();
+initGoogleAuth();

@@ -1399,6 +1399,51 @@ body {
   padding: 1.35rem 1.5rem;
 }
 
+.btn-google-auth {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.btn-google-auth:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 0.9rem 0 0.75rem;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-divider span {
+  padding: 0 0.65rem;
+}
+
 .auth-form-layout {
   display: flex;
   flex-direction: column;
