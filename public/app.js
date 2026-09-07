@@ -629,6 +629,18 @@ function onAuthSuccess(user, message = '') {
   updateSubscriptionUI();
   showToast(message || `Selamat datang, ${user.name}! Akun Anda aktif.`);
 
+  const trial = getTrialState();
+  const isPaid = isSubscriptionActive();
+
+  // Begitu login, jika masa trial 5 menit sudah selesai dan belum bayar paket -> Arahkan langsung ke pilih daftar paket
+  if (!isPaid && !trial.isActive) {
+    setTimeout(() => {
+      const currentTitle = (titleInput && titleInput.value.trim()) || 'Akses Penuh Jurnal Skripsi';
+      openPaymentGateway(currentTitle);
+    }, 400);
+    return;
+  }
+
   if (pendingActionAfterAuth) {
     const act = pendingActionAfterAuth;
     pendingActionAfterAuth = null;
@@ -1200,13 +1212,25 @@ async function executeSearch(forcePaid = false) {
 
   // If subscription is not paid and 5-min trial has expired, require login -> payment
   if (!isPaid && !forcePaid && !trial.isActive) {
-    openPaymentGateway(title);
+    if (!getCurrentUser()) {
+      pendingActionAfterAuth = { action: 'checkout', title: title };
+      openRegisterModal('login');
+      showToast('Masa uji coba 5 menit gratis telah selesai. Silakan masuk untuk memilih paket riset.');
+    } else {
+      openPaymentGateway(title);
+    }
     return;
   }
 
   const settings = getSystemSettings();
   if (settings.requirePayment === true && !forcePaid && !isPaid && !trial.isActive) {
-    openPaymentGateway(title);
+    if (!getCurrentUser()) {
+      pendingActionAfterAuth = { action: 'checkout', title: title };
+      openRegisterModal('login');
+      showToast('Masa uji coba 5 menit gratis telah selesai. Silakan masuk untuk memilih paket riset.');
+    } else {
+      openPaymentGateway(title);
+    }
     return;
   }
 
