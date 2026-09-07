@@ -1490,14 +1490,14 @@ function renderJournalsList(papers) {
         <div style="width: 52px; height: 52px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.85rem;">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem;">
-          Masa Akses Lisensi Telah Selesai
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; line-height: 1.3;">
+          Jangan Biarkan Progres Skripsimu Terhenti di Sini
         </h3>
-        <p style="font-size: 0.88rem; color: #475569; max-width: 580px; margin: 0 auto 1.25rem; line-height: 1.55;">
-          Seluruh <strong>${papers.length} artikel jurnal terpublikasi</strong>, pratinjau PDF in-app, tautan jurnal, dan fitur sitasi resmi telah terkunci. Aktifkan paket riset skripsi via <strong>Midtrans Payment Gateway</strong> untuk membuka kembali seluruh akses tanpa batas.
+        <p style="font-size: 0.9rem; color: #475569; max-width: 620px; margin: 0 auto 1.35rem; line-height: 1.6;">
+          Sayang sekali kalau harus cari dan sortir ulang bahan dari awal. Simpan progresmu dan buka kembali akses ke 40 jurnal pilihan, sitasi otomatis, serta bacaan lengkap PDF hanya dengan sekali klik.
         </p>
-        <button type="button" class="btn-search btn-unlock-license" style="padding: 0.8rem 1.8rem; font-size: 0.96rem;">
-          Aktifkan Lisensi Riset Skripsi (Mulai Rp 15.000)
+        <button type="button" class="btn-search btn-unlock-license" style="padding: 0.85rem 2rem; font-size: 0.98rem; font-weight: 700; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
+          Selamatkan Progres Riset (Mulai Rp15.000)
         </button>
       </div>
     `;
