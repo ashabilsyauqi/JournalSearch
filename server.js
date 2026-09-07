@@ -270,7 +270,8 @@ function parseOpenAlexWorks(works, forceIndonesian = false) {
     const doiRaw = work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//i, '') : null;
     const doiUrl = work.doi || (doiRaw ? `https://doi.org/${doiRaw}` : null);
     const isOA = Boolean(work.open_access?.is_oa);
-    const pdfUrl = work.open_access?.oa_url || work.best_oa_location?.pdf_url || work.primary_location?.pdf_url || null;
+    const directPdf = work.best_oa_location?.pdf_url || work.primary_location?.pdf_url || null;
+    const pdfUrl = directPdf || (work.open_access?.oa_url && work.open_access.oa_url.endsWith('.pdf') ? work.open_access.oa_url : (directPdf || work.open_access?.oa_url || null));
     const abstract = reconstructAbstract(work.abstract_inverted_index);
     const publisher = work.primary_location?.source?.host_organization_name || 'Academic Press';
     const detectedOrigin = detectOrigin(work.title, abstract, journalName, publisher);
@@ -994,9 +995,11 @@ function fetchPdfStream(targetUrl, clientRes, redirectCount = 0) {
       hostname: parsed.hostname,
       port: parsed.port || (parsed.protocol === 'http:' ? 80 : 443),
       path: parsed.path,
+      rejectUnauthorized: false,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 AcademicReader/1.0',
-        'Accept': 'application/pdf,application/octet-stream,*/*'
+        'Accept': 'application/pdf,application/octet-stream,text/html,*/*',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7'
       },
       timeout: 15000
     };
@@ -1097,7 +1100,7 @@ const server = http.createServer(async (req, res) => {
   // ====================================================================
   // DIRECT PDF PROXY STREAMING ENDPOINT
   // ====================================================================
-  if (pathname === '/api/pdf/proxy' && req.method === 'GET') {
+  if ((pathname === '/api/pdf/proxy' || pathname === '/api/pdf-proxy' || pathname === '/api/pdf_proxy') && req.method === 'GET') {
     const targetUrl = parsedUrl.query.url;
     if (!targetUrl || (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://'))) {
       res.writeHead(400, { 'Content-Type': 'application/json' });

@@ -258,17 +258,6 @@ const btnLoginWithWa = document.getElementById('btnLoginWithWa');
 const btnSwitchToLoginWithWa = document.getElementById('btnSwitchToLoginWithWa');
 const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
 
-// Google 1-Click Modal Elements
-const googleOneClickModal = document.getElementById('googleOneClickModal');
-const btnGoogleModalClose = document.getElementById('btnGoogleModalClose');
-const googleOneClickAccountCard = document.getElementById('googleOneClickAccountCard');
-const gCardAvatar = document.getElementById('gCardAvatar');
-const gCardName = document.getElementById('gCardName');
-const gCardEmail = document.getElementById('gCardEmail');
-const gCustomEmailInput = document.getElementById('gCustomEmailInput');
-const gCustomNameInput = document.getElementById('gCustomNameInput');
-const btnGoogle1ClickSubmit = document.getElementById('btnGoogle1ClickSubmit');
-
 const regName = document.getElementById('regName');
 const regWhatsapp = document.getElementById('regWhatsapp');
 const regEmail = document.getElementById('regEmail');
@@ -734,29 +723,12 @@ function handleGoogleSignInResponse(response) {
   loginWithGoogleUser(googleEmail, googleName, picture);
 }
 
-function openGoogleOneClickModal() {
+function handleGoogleButtonClick() {
   const savedGoogleEmail = localStorage.getItem('last_google_email') || 'ashabilsyauqi@gmail.com';
   const savedGoogleName = localStorage.getItem('last_google_name') || 'Ashabil Syauqi';
 
-  if (gCardName) gCardName.textContent = savedGoogleName;
-  if (gCardEmail) gCardEmail.textContent = savedGoogleEmail;
-  if (gCardAvatar) gCardAvatar.textContent = (savedGoogleName[0] || 'A').toUpperCase();
-
-  if (googleOneClickModal) googleOneClickModal.style.display = 'flex';
-}
-
-function closeGoogleOneClickModal() {
-  if (googleOneClickModal) googleOneClickModal.style.display = 'none';
-}
-
-function handleGoogleButtonClick() {
-  const clientId = getGoogleClientId();
-  if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
-    try {
-      window.google.accounts.id.prompt();
-    } catch (e) {}
-  }
-  openGoogleOneClickModal();
+  // Instant 1-Click Login
+  loginWithGoogleUser(savedGoogleEmail, savedGoogleName);
 }
 
 function initGoogleAuth() {
@@ -789,33 +761,6 @@ function initGoogleAuth() {
 
 if (btnGoogleSignIn) {
   btnGoogleSignIn.addEventListener('click', handleGoogleButtonClick);
-}
-
-if (btnGoogleModalClose) {
-  btnGoogleModalClose.addEventListener('click', closeGoogleOneClickModal);
-}
-
-if (googleOneClickAccountCard) {
-  googleOneClickAccountCard.addEventListener('click', () => {
-    const email = (gCardEmail && gCardEmail.textContent.trim()) || 'mahasiswa.riset@gmail.com';
-    const name = (gCardName && gCardName.textContent.trim()) || 'Mahasiswa Peneliti';
-    localStorage.setItem('last_google_email', email);
-    localStorage.setItem('last_google_name', name);
-    loginWithGoogleUser(email, name);
-  });
-}
-
-if (btnGoogle1ClickSubmit) {
-  btnGoogle1ClickSubmit.addEventListener('click', () => {
-    const customEmail = gCustomEmailInput && gCustomEmailInput.value.trim();
-    const customName = gCustomNameInput && gCustomNameInput.value.trim();
-    const email = customEmail || (gCardEmail && gCardEmail.textContent.trim()) || 'mahasiswa.riset@gmail.com';
-    const name = customName || (gCardName && gCardName.textContent.trim()) || 'Mahasiswa Peneliti';
-
-    localStorage.setItem('last_google_email', email);
-    localStorage.setItem('last_google_name', name);
-    loginWithGoogleUser(email, name);
-  });
 }
 
 // Login via WhatsApp
@@ -1143,6 +1088,7 @@ function updateSubscriptionUI() {
   const active = subInfo.isActive;
 
   if (active) {
+    subStatusBadge.style.display = 'inline-flex';
     subStatusBadge.className = 'sub-status-pill active';
     subStatusText.textContent = `${subInfo.badgeName} • Sisa ${subInfo.remainingFormatted}`;
     if (btnUpgradeNav) {
@@ -1154,15 +1100,13 @@ function updateSubscriptionUI() {
 
   const trial = getTrialState();
   if (trial.isActive) {
-    subStatusBadge.className = 'sub-status-pill trial';
-    subStatusText.textContent = `Uji Coba: ${formatTrialTime(trial.remainingSeconds)}`;
-    if (btnUpgradeNav) {
-      btnUpgradeNav.textContent = 'Beli Akses';
-      btnUpgradeNav.title = 'Beli paket akses riset penuh (Sebelum masa uji coba selesai)';
-    }
+    // Hide the countdown ticker during free trial as requested
+    subStatusBadge.style.display = 'none';
   } else {
+    // Show license status when trial has ended
+    subStatusBadge.style.display = 'inline-flex';
     subStatusBadge.className = 'sub-status-pill expired';
-    subStatusText.textContent = 'Uji Coba Habis';
+    subStatusText.textContent = 'Lisensi Belum Aktif';
     if (btnUpgradeNav) {
       btnUpgradeNav.textContent = 'Beli Akses';
       btnUpgradeNav.title = 'Aktifkan paket untuk membuka seluruh fitur';
@@ -1696,33 +1640,76 @@ if (btnBookmarkClose) {
 }
 
 // ====================================================================
-// PDF PREVIEW MODAL
+// PDF PREVIEW MODAL (WITH PROXY & MULTI-VIEWER AUTO FALLBACK)
 // ====================================================================
+let pdfLoadTimeout = null;
+
 function openPdfPreview(pdfUrl, title, doiUrl) {
   if (!pdfPreviewModal) return;
+  const rawUrl = pdfUrl || doiUrl;
+  if (!rawUrl) {
+    showToast('Tautan dokumen PDF tidak tersedia untuk artikel ini.');
+    return;
+  }
+
   pdfModalTitle.textContent = title || 'Pratinjau Jurnal Ilmiah';
-  pdfModalSubtitle.textContent = 'Memuat dokumen resmi...';
+  pdfModalSubtitle.textContent = 'Menghubungkan ke server jurnal...';
   pdfLoadingIndicator.style.display = 'flex';
   pdfFallbackNotice.style.display = 'none';
   pdfViewerIframe.style.display = 'none';
 
-  const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+  if (btnPdfOpenNewTab) btnPdfOpenNewTab.href = rawUrl;
+  if (btnPdfDirectDownload) btnPdfDirectDownload.href = rawUrl;
+  if (btnPdfFallbackLink) btnPdfFallbackLink.href = rawUrl;
+
+  if (pdfLoadTimeout) clearTimeout(pdfLoadTimeout);
+
+  const proxyUrl = `/api/pdf/proxy?url=${encodeURIComponent(rawUrl)}`;
+  const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(rawUrl)}&embedded=true`;
+
   pdfViewerIframe.src = proxyUrl;
 
-  if (btnPdfOpenNewTab) btnPdfOpenNewTab.href = pdfUrl;
-  if (btnPdfDirectDownload) btnPdfDirectDownload.href = pdfUrl;
-  if (btnPdfFallbackLink) btnPdfFallbackLink.href = pdfUrl;
-
+  let loaded = false;
   pdfViewerIframe.onload = () => {
+    loaded = true;
+    if (pdfLoadTimeout) clearTimeout(pdfLoadTimeout);
     pdfLoadingIndicator.style.display = 'none';
     pdfViewerIframe.style.display = 'block';
+    pdfModalSubtitle.textContent = 'Dokumen resmi berhasil dimuat';
   };
+
+  pdfViewerIframe.onerror = () => {
+    if (pdfLoadTimeout) clearTimeout(pdfLoadTimeout);
+    switchToGoogleDocsOrFallback(googleDocsViewerUrl, rawUrl);
+  };
+
+  // If university / publisher server takes longer than 4s or blocks iframe, auto-fallback to Google Docs Viewer
+  pdfLoadTimeout = setTimeout(() => {
+    if (!loaded) {
+      switchToGoogleDocsOrFallback(googleDocsViewerUrl, rawUrl);
+    }
+  }, 4000);
 
   pdfPreviewModal.style.display = 'flex';
 }
 
+function switchToGoogleDocsOrFallback(viewerUrl, originalUrl) {
+  if (!pdfViewerIframe || !pdfPreviewModal) return;
+  pdfModalSubtitle.textContent = 'Memuat alternatif viewer...';
+  pdfViewerIframe.src = viewerUrl;
+
+  setTimeout(() => {
+    pdfLoadingIndicator.style.display = 'none';
+    pdfViewerIframe.style.display = 'block';
+    if (pdfFallbackNotice) {
+      pdfFallbackNotice.style.display = 'block';
+    }
+  }, 2500);
+}
+
 function closePdfPreview() {
   if (!pdfPreviewModal) return;
+  if (pdfLoadTimeout) clearTimeout(pdfLoadTimeout);
   pdfPreviewModal.style.display = 'none';
   pdfViewerIframe.src = '';
 }
@@ -2199,7 +2186,6 @@ window.addEventListener('click', (e) => {
   if (e.target === registerModal) closeRegisterModal();
   if (e.target === userProfileModal) closeUserProfileModal();
   if (e.target === pdfPreviewModal) closePdfPreview();
-  if (e.target === googleOneClickModal) closeGoogleOneClickModal();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -2211,7 +2197,6 @@ window.addEventListener('keydown', (e) => {
     closeRegisterModal();
     closeUserProfileModal();
     closePdfPreview();
-    closeGoogleOneClickModal();
   }
 });
 
