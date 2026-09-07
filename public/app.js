@@ -656,6 +656,8 @@ function onAuthSuccess(user, message = '') {
   }
 }
 
+const OFFICIAL_GOOGLE_CLIENT_ID = '525243582803-rqik2o4jgnllhnp35rp9ochu605b2t8n.apps.googleusercontent.com';
+
 // Google Authentication & One-Click API Handlers
 function getGoogleClientId() {
   const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
@@ -665,7 +667,7 @@ function getGoogleClientId() {
   const saved = localStorage.getItem('google_client_id');
   if (saved && !saved.includes('example')) return saved;
   if (window.GOOGLE_CLIENT_ID && !window.GOOGLE_CLIENT_ID.includes('example')) return window.GOOGLE_CLIENT_ID;
-  return null;
+  return OFFICIAL_GOOGLE_CLIENT_ID;
 }
 
 function decodeJwtResponse(token) {
@@ -730,6 +732,7 @@ function handleGoogleSignInResponse(response) {
 
   loginWithGoogleUser(googleEmail, googleName, picture);
 }
+window.handleGoogleSignInResponse = handleGoogleSignInResponse;
 
 function showGoogleOneTapPrompt() {
   if (getCurrentUser()) return;
@@ -761,6 +764,8 @@ function handleGoogleButtonClick() {
 }
 
 function initGoogleAuth() {
+  const clientId = getGoogleClientId();
+
   // Show top-right Google One Tap floating prompt for instant 1-click login
   if (!getCurrentUser() && sessionStorage.getItem('onetap_dismissed') !== 'true') {
     setTimeout(() => {
@@ -768,12 +773,9 @@ function initGoogleAuth() {
     }, 1200);
   }
 
-  if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+  if (!window.google || !window.google.accounts || !window.google.accounts.id || !clientId) {
     return;
   }
-
-  const clientId = getGoogleClientId();
-  if (!clientId) return; // Only init if valid client ID exists to avoid 401 error
 
   try {
     window.google.accounts.id.initialize({
