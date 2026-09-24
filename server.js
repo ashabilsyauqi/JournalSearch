@@ -4,6 +4,29 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
+// Load .env if present
+(function loadEnvFile() {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const k = trimmed.slice(0, eqIdx).trim();
+          const v = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+          if (process.env[k] === undefined) {
+            process.env[k] = v;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+})();
+
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 const PUBLIC_DIR = (fs.existsSync(path.join(__dirname, 'public')) && fs.statSync(path.join(__dirname, 'public')).isDirectory())
@@ -880,10 +903,10 @@ function isPlaceholderKey(key) {
 
 function getMidtransConfig() {
   let cfg = {
-    isProduction: false,
-    clientKey: 'SB-Mid-client-PLACEHOLDER_GANTI_DENGAN_CLIENT_KEY_ANDA',
-    serverKey: 'SB-Mid-server-PLACEHOLDER_GANTI_DENGAN_SERVER_KEY_ANDA',
-    merchantId: 'G000000000_PLACEHOLDER_MERCHANT_ID'
+    isProduction: true,
+    clientKey: 'Mid-client-FodF2EHkOGnjpDEm',
+    serverKey: process.env.MIDTRANS_SERVER_KEY || '',
+    merchantId: 'G740209003'
   };
 
   try {
