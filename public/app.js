@@ -2008,9 +2008,29 @@ document.querySelectorAll('.btn-plan-select').forEach(btn => {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const plan = btn.getAttribute('data-plan') || btn.closest('.plan-card-item')?.getAttribute('data-plan');
-    if (plan) selectPackagePlan(plan);
+    if (plan) {
+      selectPackagePlan(plan);
+      payWithMidtransSnap();
+    }
   });
 });
+
+function ensureSnapLoaded() {
+  return new Promise((resolve) => {
+    if (typeof window.snap !== 'undefined' && window.snap.pay) {
+      return resolve(true);
+    }
+    const existing = document.querySelector('script[src*="snap.js"]');
+    if (existing) existing.remove();
+
+    const script = document.createElement('script');
+    script.src = 'https://app.midtrans.com/snap/snap.js';
+    script.setAttribute('data-client-key', 'Mid-client-FodF2EHkOGnjpDEm');
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
 
 // Pay with Midtrans Snap
 async function payWithMidtransSnap() {
@@ -2027,6 +2047,8 @@ async function payWithMidtransSnap() {
   }
 
   try {
+    await ensureSnapLoaded();
+
     const res = await fetch('/api/payment/create-transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2057,7 +2079,9 @@ async function payWithMidtransSnap() {
     }
 
     if (!data || !data.success) {
-      showToast('Gagal memproses Midtrans: ' + (data?.error || 'Kesalahan koneksi'));
+      const errMsg = data?.error || 'Koneksi ke Midtrans gagal.';
+      alert('Gagal Membuka Midtrans Snap:\n' + errMsg);
+      showToast('Gagal memproses Midtrans: ' + errMsg);
       return;
     }
 
@@ -2082,7 +2106,10 @@ async function payWithMidtransSnap() {
       } else if (data.redirect_url) {
         window.open(data.redirect_url, '_blank');
         startPaymentStatusPolling(data.order_id, currentSelectedPackage);
+      } else {
+        alert('Midtrans Snap tidak dapat dimuat di browser. Silakan nonaktifkan ad-blocker atau periksa koneksi.');
       }
+    }
     }
 
   } catch (err) {
