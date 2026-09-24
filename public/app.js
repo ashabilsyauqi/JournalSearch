@@ -806,26 +806,30 @@ function initGoogleAuth() {
   }
 }
 
-// Login via WhatsApp
+// Login via WhatsApp or Email
 if (btnLoginWithWa) {
   btnLoginWithWa.addEventListener('click', () => {
     const raw = (loginWaInput && loginWaInput.value.trim()) || '';
     if (!raw) {
       if (regErrorAlert) {
         regErrorAlert.style.display = 'block';
-        regErrorTitle.textContent = 'Nomor WhatsApp Kosong';
-        regErrorMessage.textContent = 'Harap masukkan nomor WhatsApp Anda.';
+        regErrorTitle.textContent = 'Nomor WhatsApp / Email Kosong';
+        regErrorMessage.textContent = 'Harap masukkan nomor WhatsApp atau alamat Email Anda.';
       }
       return;
     }
     const norm = normalizePhone(raw);
     const users = getRegisteredUsers();
-    const found = users.find(u => u.whatsapp === norm);
+    const found = users.find(u => 
+      (u.whatsapp && u.whatsapp === norm) || 
+      (u.rawWhatsapp && u.rawWhatsapp === raw) ||
+      (u.email && u.email.toLowerCase() === raw.toLowerCase())
+    );
     if (!found) {
       if (regErrorAlert) {
         regErrorAlert.style.display = 'block';
         regErrorTitle.textContent = 'Akun Belum Terdaftar';
-        regErrorMessage.innerHTML = `Nomor WhatsApp <strong>${escapeHtml(raw)}</strong> belum terdaftar. Silakan klik tab <strong>Daftar Baru</strong> untuk mendaftar akun Anda.`;
+        regErrorMessage.innerHTML = `Akun <strong>${escapeHtml(raw)}</strong> belum terdaftar. Silakan klik tab <strong>Daftar Baru</strong> untuk mendaftar akun Anda secara instan.`;
       }
       return;
     }
@@ -2109,7 +2113,6 @@ async function payWithMidtransSnap() {
       } else {
         alert('Midtrans Snap tidak dapat dimuat di browser. Silakan nonaktifkan ad-blocker atau periksa koneksi.');
       }
-    }
     }
 
   } catch (err) {
