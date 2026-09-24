@@ -901,7 +901,7 @@ function isPlaceholderKey(key) {
   return k.includes('placeholder') || k.includes('ganti_dengan') || k.includes('masukkan_') || k.length < 15;
 }
 
-const DEFAULT_MIDTRANS_PROD_SERVER_KEY = Buffer.from('TWlkLXNlcnZlci1STTd0RmZrS182MWluOVd1b0E2VlhaRVQ=', 'base64').toString('utf8');
+const DEFAULT_MIDTRANS_PROD_SERVER_KEY = Buffer.from('TWlkLXNlcnZlci1STTd0RmZrS182MWluOVd1b0E2VlhaRXQ=', 'base64').toString('utf8');
 const DEFAULT_MIDTRANS_PROD_CLIENT_KEY = 'Mid-client-FodF2EHkOGnjpDEm';
 const DEFAULT_MIDTRANS_PROD_MERCHANT_ID = 'G740209003';
 
