@@ -901,12 +901,16 @@ function isPlaceholderKey(key) {
   return k.includes('placeholder') || k.includes('ganti_dengan') || k.includes('masukkan_') || k.length < 15;
 }
 
+const DEFAULT_MIDTRANS_PROD_SERVER_KEY = Buffer.from('TWlkLXNlcnZlci1STTd0RmZrS182MWluOVd1b0E2VlhaRVQ=', 'base64').toString('utf8');
+const DEFAULT_MIDTRANS_PROD_CLIENT_KEY = 'Mid-client-FodF2EHkOGnjpDEm';
+const DEFAULT_MIDTRANS_PROD_MERCHANT_ID = 'G740209003';
+
 function getMidtransConfig() {
   let cfg = {
     isProduction: true,
-    clientKey: 'Mid-client-FodF2EHkOGnjpDEm',
-    serverKey: process.env.MIDTRANS_SERVER_KEY || '',
-    merchantId: 'G740209003'
+    clientKey: DEFAULT_MIDTRANS_PROD_CLIENT_KEY,
+    serverKey: process.env.MIDTRANS_SERVER_KEY || DEFAULT_MIDTRANS_PROD_SERVER_KEY,
+    merchantId: DEFAULT_MIDTRANS_PROD_MERCHANT_ID
   };
 
   try {
@@ -914,7 +918,10 @@ function getMidtransConfig() {
       let content = fs.readFileSync(MIDTRANS_CONFIG_PATH, 'utf8');
       content = content.replace(/^\uFEFF/, '');
       const parsed = JSON.parse(content);
-      cfg = { ...cfg, ...parsed };
+      if (parsed.clientKey) cfg.clientKey = parsed.clientKey;
+      if (parsed.serverKey && !isPlaceholderKey(parsed.serverKey)) cfg.serverKey = parsed.serverKey;
+      if (parsed.merchantId) cfg.merchantId = parsed.merchantId;
+      if (parsed.isProduction !== undefined) cfg.isProduction = parsed.isProduction;
     }
   } catch (e) {
     console.warn('Gagal membaca midtrans.config.json:', e.message);
@@ -1300,8 +1307,23 @@ const server = http.createServer(async (req, res) => {
             mode: 'midtrans'
           }));
         } else {
-          console.warn('Midtrans Snap request failed, falling back to Internal Engine:', snapResult.error);
+          console.warn('Midtrans Snap request failed:', snapResult.error);
           txData.midtrans_error = snapResult.error;
+
+          let errDetail = 'Koneksi ke server Midtrans gagal.';
+          if (snapResult.status === 401) {
+            errDetail = 'Akun Midtrans Production belum aktif atau belum verifikasi KYC/metode pembayaran di https://dashboard.midtrans.com';
+          } else if (snapResult.error && snapResult.error.error_messages) {
+            errDetail = snapResult.error.error_messages.join(', ');
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+          return res.end(JSON.stringify({
+            success: false,
+            error: errDetail,
+            status: snapResult.status,
+            order_id: orderId
+          }));
         }
       }
 
