@@ -932,6 +932,11 @@ function getMidtransConfig() {
   if (process.env.MIDTRANS_CLIENT_KEY) cfg.clientKey = process.env.MIDTRANS_CLIENT_KEY;
   if (process.env.MIDTRANS_IS_PRODUCTION !== undefined) cfg.isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
 
+  // Automatic correction for trailing uppercase T typo from screenshots/OCR
+  if (cfg.serverKey && (cfg.serverKey.endsWith('VXZET') || cfg.serverKey.includes('RM7tFfkK_61in9WuoA6VXZET'))) {
+    cfg.serverKey = DEFAULT_MIDTRANS_PROD_SERVER_KEY;
+  }
+
   return cfg;
 }
 
@@ -1216,7 +1221,10 @@ const server = http.createServer(async (req, res) => {
       const grossAmount = parseInt(body.amount, 10) || selectedPackage.price;
       
       const midtransCfg = getMidtransConfig();
-      const midtransServerKey = (body.midtransServerKey || midtransCfg.serverKey || '').trim();
+      let midtransServerKey = (body.midtransServerKey || midtransCfg.serverKey || '').trim();
+      if (midtransServerKey.endsWith('VXZET') || midtransServerKey.includes('RM7tFfkK_61in9WuoA6VXZET')) {
+        midtransServerKey = DEFAULT_MIDTRANS_PROD_SERVER_KEY;
+      }
       const isProduction = body.isProduction !== undefined ? Boolean(body.isProduction) : midtransCfg.isProduction;
       const isPlh = isPlaceholderKey(midtransServerKey);
 
